@@ -799,13 +799,53 @@ class BaselineAgent(ArtificialBrain):
         '''
         Baseline implementation of a trust belief. Creates a dictionary with trust belief scores for each team member, for example based on the received messages.
         '''
+
         # Update the trust value based on for example the received messages
+        print(receivedMessages)
+        print("------")
         for message in receivedMessages:
+
+            #how to know if the human is Reliable or untrusty:
+            #If human says i search area X then search area Y and robot finds vicitme in area X -> Human Untrusty/UNreliable.
+            #If Human does twice the dame action, (aka duplicated messages) -> Human unreliable
+
+
             # Increase agent trust in a team member that rescued a victim
             if 'Collect' in message:
-                trustBeliefs[self._humanName]['competence']+=0.10
-                # Restrict the competence belief to a range of -1 to 1
-                trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
+                print(self._collectedVictims)
+                print(((message.split('Collect: '))[1].split(' in ')[0]))
+                if (((message.split('Collect: '))[1].split(' in ')[0]) in self._collectedVictims):
+                    trustBeliefs[self._humanName]['competence']+=0.10
+                    # Restrict the competence belief to a range of -1 to 1
+                    trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
+                else:
+                    trustBeliefs[self._humanName]['competence'] -= 0.10
+
+
+        count = 0
+        for sent_messages in self._sendMessages:
+            # Human says to robot "there is a x here" but robot doesnt find it.
+            if "not present in" and "because I searched the whole area without finding" in sent_messages:
+                trustBeliefs[self._humanName]['competence'] -= 0.10
+
+            #If robot says "there is a obstacle after the human told him that there is an obstacle"
+            if count == 1:
+
+                if "Lets remove" and "blocking area":
+                    #then add 0.1
+                    trustBeliefs[self._humanName]['competence'] += 0.10
+                    count -= 1
+                else:
+                    #if not the human lied about the obstacle.
+                    trustBeliefs[self._humanName]['competence'] -= 0.10
+                    count -= 1
+
+            # If human says there is an obstacle, then robot goes there.
+            if "Moving to area " and "to help you remove an obstacle." in sent_messages:
+                count += 1
+
+        print(trustBeliefs)
+
         # Save current trust belief values so we can later use and retrieve them to add to a csv file with all the logged trust belief values
         with open(folder + '/beliefs/currentTrustBelief.csv', mode='w') as csv_file:
             csv_writer = csv.writer(csv_file, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
