@@ -795,56 +795,46 @@ class BaselineAgent(ArtificialBrain):
                     trustBeliefs[self._humanName] = {'competence': competence, 'willingness': willingness}
         return trustBeliefs
 
+
     def _trustBelief(self, members, trustBeliefs, folder, receivedMessages):
         '''
         Baseline implementation of a trust belief. Creates a dictionary with trust belief scores for each team member, for example based on the received messages.
         '''
 
         # Update the trust value based on for example the received messages
-        print(receivedMessages)
+        print("Human", receivedMessages)
         print("------")
+
         for message in receivedMessages:
-
-            #how to know if the human is Reliable or untrusty:
-            #If human says i search area X then search area Y and robot finds vicitme in area X -> Human Untrusty/UNreliable.
-            #If Human does twice the dame action, (aka duplicated messages) -> Human unreliable
-
-
-            # Increase agent trust in a team member that rescued a victim
+            #Base case from code example.
             if 'Collect' in message:
-                print(self._collectedVictims)
-                print(((message.split('Collect: '))[1].split(' in ')[0]))
-                if (((message.split('Collect: '))[1].split(' in ')[0]) in self._collectedVictims):
-                    trustBeliefs[self._humanName]['competence']+=0.10
-                    # Restrict the competence belief to a range of -1 to 1
-                    trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
-                else:
-                    trustBeliefs[self._humanName]['competence'] -= 0.10
+                trustBeliefs[self._humanName]['competence'] += 0.10
 
+        print("Robot: ", self._sendMessages)
+        print("------")
 
-        count = 0
-        for sent_messages in self._sendMessages:
+        for sent_message in self._sendMessages:
+
             # Human says to robot "there is a x here" but robot doesnt find it.
-            if "not present in" and "because I searched the whole area without finding" in sent_messages:
+            if "not present in" and "because I searched the whole area without finding" in sent_message:
                 trustBeliefs[self._humanName]['competence'] -= 0.10
+                trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1,1)
 
-            #If robot says "there is a obstacle after the human told him that there is an obstacle"
-            if count == 1:
+            # If human says there is an obstacle, then robot goes there. Two options:
+                # -Obstacle is there so increase competance
+                # -Obstacle is not there so decrease competance
+            if "Moving to area " and "to help you remove an obstacle." in sent_message:
+                trustBeliefs = self.obstacle_called_by_human(trustBeliefs, self._sendMessages.index(sent_message))
 
-                if "Lets remove" and "blocking area":
-                    #then add 0.1
-                    trustBeliefs[self._humanName]['competence'] += 0.10
-                    count -= 1
-                else:
-                    #if not the human lied about the obstacle.
-                    trustBeliefs[self._humanName]['competence'] -= 0.10
-                    count -= 1
 
-            # If human says there is an obstacle, then robot goes there.
-            if "Moving to area " and "to help you remove an obstacle." in sent_messages:
-                count += 1
+            # Robot asks for help but the human takes too long to answer.
+            if "Found" and "blocking area " and "Please decide whether to" and "or \"Continue\" searching":
+                trustBeliefs = self.long_to_answer(trustBeliefs, receivedMessages)
 
+
+        print("-Start trust beliefs-")
         print(trustBeliefs)
+        print("-End trust beliefs-")
 
         # Save current trust belief values so we can later use and retrieve them to add to a csv file with all the logged trust belief values
         with open(folder + '/beliefs/currentTrustBelief.csv', mode='w') as csv_file:
@@ -853,6 +843,34 @@ class BaselineAgent(ArtificialBrain):
             csv_writer.writerow([self._humanName,trustBeliefs[self._humanName]['competence'],trustBeliefs[self._humanName]['willingness']])
 
         return trustBeliefs
+
+    # If human says there is an obstacle, then robot goes there.
+        #Two options:
+            #-Obstacle is there so increase competance
+            #-Obstacle is not there so decrease competance
+    def obstacle_called_by_human(self, trustBeliefs, index):
+        # If robot says "there is a obstacle after the human told him that there is an obstacle"
+        try:
+            if "Lets remove" and "blocking area" in self._sendMessages[index+1]:
+                # then add 0.1
+                trustBeliefs[self._humanName]['competence'] += 0.10
+                trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1,1)
+                return trustBeliefs
+            else:
+                # if not the human lied about the obstacle.
+                trustBeliefs[self._humanName]['competence'] -= 0.10
+                trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1,1)
+                return trustBeliefs
+
+        except: return trustBeliefs
+
+    # Robot asks for help but the human takes too long to answer.
+    def long_to_answer(self, trustBeliefs, receivedMessages):
+
+        trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
+        return trustBeliefs
+
+
 
     def _sendMessage(self, mssg, sender):
         '''
