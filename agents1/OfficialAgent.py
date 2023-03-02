@@ -817,9 +817,10 @@ class BaselineAgent(ArtificialBrain):
         for sent_message in self._sendMessages:
 
             #if victim found
-            if "Found" and "injured" and "in area " in sent_message:
-                trustBeliefs = self.robots_finds_victim_in_other_room_then_human_appointed(trustBeliefs, sent_message, receivedMessages)
-                trustBeliefs = self.robot_finds_victim_in_searched_area(trustBeliefs, sent_message)
+            if ("Found" and "injured" and "in area ") in sent_message:
+                print(sent_message)
+                #trustBeliefs = self.robots_finds_victim_in_other_room_then_human_appointed(trustBeliefs, sent_message, receivedMessages)
+                #trustBeliefs = self.robot_finds_victim_in_searched_area(trustBeliefs, sent_message)
 
             # Human says to robot "there is a x here" but robot doesnt find it.
             if "not present in" and "because I searched the whole area without finding" in sent_message:
