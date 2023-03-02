@@ -13,6 +13,7 @@ from matrx.actions.object_actions import GrabObject, DropObject, RemoveObject
 from matrx.actions.move_actions import MoveNorth
 from matrx.messages.message import Message
 from matrx.messages.message_manager import MessageManager
+import re
 from actions1.CustomActions import RemoveObjectTogether, CarryObjectTogether, DropObjectTogether, CarryObject, Drop
 
 class Phase(enum.Enum):
@@ -815,6 +816,11 @@ class BaselineAgent(ArtificialBrain):
 
         for sent_message in self._sendMessages:
 
+            #if victim found
+            if "Found" and "injured" and "in area " in sent_message:
+                trustBeliefs = self.robots_finds_victim_in_other_room_then_human_appointed(trustBeliefs, sent_message, receivedMessages)
+                trustBeliefs = self.robot_finds_victim_in_searched_area(trustBeliefs, sent_message)
+
             # Human says to robot "there is a x here" but robot doesnt find it.
             if "not present in" and "because I searched the whole area without finding" in sent_message:
                 trustBeliefs[self._humanName]['competence'] -= 0.10
@@ -832,6 +838,7 @@ class BaselineAgent(ArtificialBrain):
                 trustBeliefs = self.long_to_answer(trustBeliefs, receivedMessages)
 
 
+
         print("-Start trust beliefs-")
         print(trustBeliefs)
         print("-End trust beliefs-")
@@ -844,13 +851,38 @@ class BaselineAgent(ArtificialBrain):
 
         return trustBeliefs
 
+    def robots_finds_victim_in_other_room_then_human_appointed(self, trustBeliefs, message, receivedMessages):
+        victim_name = re.search('Found (.*) in area', message).group(1) #Take the name of the victim that has just been found.
+        area_victim_found = re.search(' in area (.*).', message).group(1) #Take the area of the victim that has just been found.
+
+        for message_human in receivedMessages: #For all the messages from human.
+            if victim_name and not area_victim_found in message_human: #If in one of the message from the human the victim is mentioned but not the area
+                trustBeliefs[self._humanName]['competence'] -= 0.10
+                trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
+
+        return trustBeliefs
+
+    #TO DO: I dont know if this works right now as the robot will not double check the rooms the human already did.
+    def robot_finds_victim_in_searched_area(self, trustBeliefs, message):
+        area_victim_found = re.search(' in area (.*).', message).group(1) #Take the area of the victim that has just been found.
+
+        areas_searched_previously = re.search('areas searched: area (.*)\n', message).group(1) #Take the areas that the robot assumes have already been searched.
+        areas_searched_previously = re.findall('\d+', areas_searched_previously) #Take only the numbers
+
+        if area_victim_found in areas_searched_previously:
+            trustBeliefs[self._humanName]['competence'] -= 0.10
+            trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
+
+        return trustBeliefs
+
+
     # If human says there is an obstacle, then robot goes there.
         #Two options:
             #-Obstacle is there so increase competance
             #-Obstacle is not there so decrease competance
     def obstacle_called_by_human(self, trustBeliefs, index):
-        # If robot says "there is a obstacle after the human told him that there is an obstacle"
-        try:
+        # If robot says "there is an obstacle after the human told him that there is an obstacle"
+        try: #We try because there might be an index out of bounds, if the human just asked.
             if "Lets remove" and "blocking area" in self._sendMessages[index+1]:
                 # then add 0.1
                 trustBeliefs[self._humanName]['competence'] += 0.10
