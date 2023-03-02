@@ -889,6 +889,11 @@ class BaselineAgent(ArtificialBrain):
                 trustBeliefs[self._humanName]['competence'] += 0.10
                 trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1,1)
                 return trustBeliefs
+            if "Removing" and "because you asked me to." in self._sendMessages[index+1]:
+                # then add 0.1
+                trustBeliefs[self._humanName]['competence'] += 0.10
+                trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1,1)
+                return trustBeliefs
             else:
                 # if not the human lied about the obstacle.
                 trustBeliefs[self._humanName]['competence'] -= 0.10
@@ -899,7 +904,7 @@ class BaselineAgent(ArtificialBrain):
 
     # Robot asks for help but the human takes too long to answer.
     def long_to_answer(self, trustBeliefs, receivedMessages):
-
+        # to implement
         trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
         return trustBeliefs
 
