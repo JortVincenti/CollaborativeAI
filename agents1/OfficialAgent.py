@@ -222,14 +222,34 @@ class BaselineAgent(ArtificialBrain):
                                    and room['room_name'] not in self._searchedRooms
                                    and room['room_name'] not in self._tosearch]
                 # If all areas have been searched but the task is not finished, start searching areas again
+                #TODO Baseline for cost function.
                 if self._remainingZones and len(unsearchedRooms) == 0:
-                    self._tosearch = []
-                    self._searchedRooms = []
-                    self._sendMessages = []
-                    self.received_messages = []
-                    self.received_messages_content = []
-                    self._sendMessage('Going to re-search all areas.', 'RescueBot')
-                    self._phase = Phase.FIND_NEXT_GOAL
+                    # Filter out the rooms searched by the robot (likelihood value of 1)
+                    rooms = [(room['room_name'], self._searchedRooms[room['room_name']]) for room in state.values()
+                             if 'class_inheritance' in room
+                             and 'Door' in room['class_inheritance']
+                             and room['room_name'] in self._searchedRooms
+                             and room['room_name'] not in self._tosearch
+                             and self._searchedRooms[room['room_name']] != 1]
+                    if len(rooms) > 0:
+                        rooms = sorted(rooms, key=lambda x: x[1])
+                        # Start considering the human searched rooms based on ascending likelihood
+                        # NEXT GOAL is the room with the smallest cost function
+                        self._tosearch = []
+                        self._searchedRooms.pop(rooms[0][0])
+                        self._sendMessages = []
+                        self.received_messages = []
+                        self.received_messages_content = []
+                        self._sendMessage(('Going to re-search', rooms[0][0]), 'RescueBot')
+                        self._phase = Phase.FIND_NEXT_GOAL
+                    else:
+                        self._tosearch = []
+                        self._searchedRooms = {}
+                        self._sendMessages = []
+                        self.received_messages = []
+                        self.received_messages_content = []
+                        self._sendMessage('Going to re-search all areas.', 'RescueBot')
+                        self._phase = Phase.FIND_NEXT_GOAL
                 # If there are still areas to search, define which one to search next
                 else:
                     # Identify the closest door when the agent did not search any areas yet
@@ -684,8 +704,6 @@ class BaselineAgent(ArtificialBrain):
                     receivedMessages[member].append(mssg.content)
         # Check the content of the received messages
         for name,mssgs in receivedMessages.items(): # member name, and the messages they sent
-            print(name, mssgs)
-            print(trustBeliefs)
             for msg in mssgs:
                 # If a received message involves team members searching areas, add these areas to the memory of areas that have been explored
                 if msg.startswith("Search:"):
