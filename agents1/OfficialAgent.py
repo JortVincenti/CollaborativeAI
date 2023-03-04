@@ -46,7 +46,7 @@ class BaselineAgent(ArtificialBrain):
         self._folder = folder
         self._phase = Phase.INTRO
         self._roomVics = []
-        self._searchedRooms = []
+        self._searchedRooms = {}
         self._foundVictims = []
         self._collectedVictims = []
         self._foundVictimLocs = {}
@@ -91,11 +91,12 @@ class BaselineAgent(ArtificialBrain):
             for member in self._teamMembers:
                 if mssg.from_id == member and mssg.content not in self._receivedMessages:
                     self._receivedMessages.append(mssg.content)
-        # Process messages from team members
-        self._processMessages(state, self._teamMembers, self._condition)
         # Initialize and update trust beliefs for team members
         trustBeliefs = self._loadBelief(self._teamMembers, self._folder)
-        self._trustBelief(self._teamMembers, trustBeliefs, self._folder, self._receivedMessages)
+        trustBeliefs = self._trustBelief(self._teamMembers, trustBeliefs, self._folder, self._receivedMessages)
+
+        # Process messages from team members
+        self._processMessages(state, self._teamMembers, self._condition, trustBeliefs)
 
         # Check whether human is close in distance
         if state[{'is_human_agent': True}]:
@@ -476,7 +477,7 @@ class BaselineAgent(ArtificialBrain):
                                     self._sendMessage('Found ' + vic + ' in ' + self._door['room_name'] + ' because you told me ' + vic + ' was located here.','RescueBot')
                                     # Add the area to the list with searched areas
                                     if self._door['room_name'] not in self._searchedRooms:
-                                        self._searchedRooms.append(self._door['room_name'])
+                                        self._searchedRooms[self._door['room_name']] = 1
                                     # Do not continue searching the rest of the area but start planning to rescue the victim
                                     self._phase = Phase.FIND_NEXT_GOAL
 
@@ -513,7 +514,7 @@ class BaselineAgent(ArtificialBrain):
                     self.received_messages_content = []
                 # Add the area to the list of searched areas
                 if self._door['room_name'] not in self._searchedRooms:
-                    self._searchedRooms.append(self._door['room_name'])
+                    self._searchedRooms[self._door['room_name']] = 1
                 # Make a plan to rescue a found critically injured victim if the human decides so
                 if self.received_messages_content and self.received_messages_content[-1] == 'Rescue' and 'critical' in self._recentVic:
                     self._rescue = 'together'
@@ -668,7 +669,7 @@ class BaselineAgent(ArtificialBrain):
                 zones.append(place)
         return zones
 
-    def _processMessages(self, state, teamMembers, condition):
+    def _processMessages(self, state, teamMembers, condition, trustBeliefs):
         '''
         process incoming messages received from the team members
         '''
@@ -682,13 +683,17 @@ class BaselineAgent(ArtificialBrain):
                 if mssg.from_id == member:
                     receivedMessages[member].append(mssg.content)
         # Check the content of the received messages
-        for mssgs in receivedMessages.values():
+        for name,mssgs in receivedMessages.items(): # member name, and the messages they sent
+            print(name, mssgs)
+            print(trustBeliefs)
             for msg in mssgs:
                 # If a received message involves team members searching areas, add these areas to the memory of areas that have been explored
                 if msg.startswith("Search:"):
                     area = 'area ' + msg.split()[-1]
                     if area not in self._searchedRooms:
-                        self._searchedRooms.append(area)
+                        # Trust scenario 1: Human claims to go search a room
+                        competence = trustBeliefs[name]['competence']
+                        self._searchedRooms[area] = competence
                 # If a received message involves team members finding victims, add these victims and their locations to memory
                 if msg.startswith("Found:"):
                     # Identify which victim and area it concerns
@@ -699,7 +704,8 @@ class BaselineAgent(ArtificialBrain):
                     loc = 'area ' + msg.split()[-1]
                     # Add the area to the memory of searched areas
                     if loc not in self._searchedRooms:
-                        self._searchedRooms.append(loc)
+                        competence = trustBeliefs[name]['competence']
+                        self._searchedRooms[loc] = competence
                     # Add the victim and its location to memory
                     if foundVic not in self._foundVictims:
                         self._foundVictims.append(foundVic)
@@ -722,7 +728,8 @@ class BaselineAgent(ArtificialBrain):
                     loc = 'area ' + msg.split()[-1]
                     # Add the area to the memory of searched areas
                     if loc not in self._searchedRooms:
-                        self._searchedRooms.append(loc)
+                        competence = trustBeliefs[name]['competence']
+                        self._searchedRooms[loc] = competence
                     # Add the victim and location to the memory of found victims
                     if collectVic not in self._foundVictims:
                         self._foundVictims.append(collectVic)
@@ -744,7 +751,7 @@ class BaselineAgent(ArtificialBrain):
                         self._door = state.get_room_doors(area)[0]
                         self._doormat = state.get_room(area)[-1]['doormat']
                         if area in self._searchedRooms:
-                            self._searchedRooms.remove(area)
+                            self._searchedRooms.pop(area)
                         # Clear received messages (bug fix)
                         self.received_messages = []
                         self.received_messages_content = []
