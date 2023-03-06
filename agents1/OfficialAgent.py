@@ -705,8 +705,8 @@ class BaselineAgent(ArtificialBrain):
                     area = 'area ' + msg.split()[-1]
                     if area not in self._searchedRooms:
                         # Trust scenario 1: Human claims to go search a room
-                        competence = trustBeliefs[name]['competence']
-                        self._searchedRooms[area] = competence
+                        willingness = trustBeliefs[name]['willingness']
+                        self._searchedRooms[area] = willingness
                 # If a received message involves team members finding victims, add these victims and their locations to memory
                 if msg.startswith("Found:"):
                     # Identify which victim and area it concerns
@@ -717,8 +717,8 @@ class BaselineAgent(ArtificialBrain):
                     loc = 'area ' + msg.split()[-1]
                     # Add the area to the memory of searched areas
                     if loc not in self._searchedRooms:
-                        competence = trustBeliefs[name]['competence']
-                        self._searchedRooms[loc] = competence
+                        willingness = trustBeliefs[name]['willingness']
+                        self._searchedRooms[loc] = willingness
                     # Add the victim and its location to memory
                     if foundVic not in self._foundVictims:
                         self._foundVictims.append(foundVic)
@@ -741,8 +741,8 @@ class BaselineAgent(ArtificialBrain):
                     loc = 'area ' + msg.split()[-1]
                     # Add the area to the memory of searched areas
                     if loc not in self._searchedRooms:
-                        competence = trustBeliefs[name]['competence']
-                        self._searchedRooms[loc] = competence
+                        willingness = trustBeliefs[name]['willingness']
+                        self._searchedRooms[loc] = willingness
                     # Add the victim and location to the memory of found victims
                     if collectVic not in self._foundVictims:
                         self._foundVictims.append(collectVic)
