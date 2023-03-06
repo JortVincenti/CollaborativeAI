@@ -842,7 +842,7 @@ class BaselineAgent(ArtificialBrain):
             # Robot asks for help but the human takes too long to answer.
             if "Found" and "blocking area " and "Please decide whether to" and "or \"Continue\" searching":
                 trustBeliefs = self.long_to_answer(trustBeliefs, receivedMessages)
-
+                trustBeliefs = self.human_helps_robot(trustBeliefs, receivedMessages)
 
 
         print("-Start trust beliefs-")
@@ -856,6 +856,24 @@ class BaselineAgent(ArtificialBrain):
             csv_writer.writerow([self._humanName,trustBeliefs[self._humanName]['competence'],trustBeliefs[self._humanName]['willingness']])
 
         return trustBeliefs
+
+    # If robot says there is an obstacle, the human can either:
+    # Two options:
+    # - Human helps, increase competence
+    # - Human doesn't help, don't do anything
+    # -  If the human says to continue, don't do anything as maybe it was not efficient to remove the obstacle right now
+    def human_helps_robot(self, trustBeliefs, index):
+        try:  # We try because there might be an index out of bounds, if the robot just asked.
+            if "Remove together" in self._sendMessages[index + 1]:
+                # then add 0.1
+                trustBeliefs[self._humanName]['competence'] += 0.10
+                trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'],
+                                                                       -1, 1)
+                return trustBeliefs
+            else:
+                return trustBeliefs
+        except:
+            return trustBeliefs
 
     def robots_finds_victim_in_other_room_then_human_appointed(self, trustBeliefs, message, receivedMessages):
         victim_name = re.search('Found (.*) in area', message).group(1) #Take the name of the victim that has just been found.
