@@ -810,6 +810,11 @@ class BaselineAgent(ArtificialBrain):
             #Base case from code example.
             if 'Collect' in message:
                 trustBeliefs[self._humanName]['competence'] += 0.10
+                trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1,
+                                                                      1)
+                trustBeliefs[self._humanName]['willingness'] += 0.10
+                trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1,
+                                                                      1)
 
         print("Robot: ", self._sendMessages)
         print("------")
