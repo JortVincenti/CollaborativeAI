@@ -791,7 +791,7 @@ class BaselineAgent(ArtificialBrain):
                     trustBeliefs[name] = {'competence': competence, 'willingness': willingness}
                 # Initialize default trust values
                 if row and row[0]!=self._humanName:
-                    competence = default
+                    competence = 1 #Assume that the human starts with the highest comeptance values according to the report.
                     willingness = default
                     trustBeliefs[self._humanName] = {'competence': competence, 'willingness': willingness}
         return trustBeliefs
@@ -812,6 +812,16 @@ class BaselineAgent(ArtificialBrain):
                 trustBeliefs[self._humanName]['competence'] += 0.10
                 trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
 
+            #Every time the human asks for help to remove something, you decrease the competance
+            if "Remove: at" in message:
+                trustBeliefs[self._humanName]['competence'] -= 0.10
+                trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
+
+            # Every time the human asks for help to rescue a victim, you decrease the competance
+            if "Found: " in message:
+                trustBeliefs[self._humanName]['competence'] -= 0.10
+                trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
+
 
         print("Robot: ", self._sendMessages)
         print("------")
@@ -827,7 +837,7 @@ class BaselineAgent(ArtificialBrain):
             # Human says to robot "there is a x here" but robot doesnt find it.
             if "not present in" and "because I searched the whole area without finding" in sent_message:
                 trustBeliefs[self._humanName]['willingness'] -= 0.10
-                trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['competence'], -1,1)
+                trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1,1)
 
             # If human says there is an obstacle, then robot goes there. Two options:
                 # -Obstacle is there so increase competance
@@ -902,20 +912,20 @@ class BaselineAgent(ArtificialBrain):
     def obstacle_called_by_human(self, trustBeliefs, index):
         # If robot says "there is an obstacle after the human told him that there is an obstacle"
         try: #We try because there might be an index out of bounds, if the human just asked.
-            if "Lets remove" and "blocking area" in self._sendMessages[index+1]:
+            if "Lets remove" and "blocking area" in (self._sendMessages[index+1] or self._sendMessages[index+2]):
                 # then add 0.1
                 trustBeliefs[self._humanName]['willingness'] += 0.10
-                trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['competence'], -1,1)
+                trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1,1)
                 return trustBeliefs
-            if "Removing" and "because you asked me to." in self._sendMessages[index+1]:
+            elif "Removing" and "because you asked me to." in (self._sendMessages[index+1] or self._sendMessages[index+2]):
                 # then add 0.1
                 trustBeliefs[self._humanName]['willingness'] += 0.10
-                trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['competence'], -1,1)
+                trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1,1)
                 return trustBeliefs
             else:
                 # if not the human lied about the obstacle.
                 trustBeliefs[self._humanName]['willingness'] -= 0.10
-                trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['competence'], -1,1)
+                trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1,1)
                 return trustBeliefs
 
         except: return trustBeliefs
