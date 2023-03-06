@@ -231,25 +231,20 @@ class BaselineAgent(ArtificialBrain):
                              and room['room_name'] in self._searchedRooms
                              and room['room_name'] not in self._tosearch
                              and self._searchedRooms[room['room_name']] != 1]
+                    self._tosearch = []
+                    self._sendMessages = []
+                    self.received_messages = []
+                    self.received_messages_content = []
+                    self._phase = Phase.FIND_NEXT_GOAL
                     if len(rooms) > 0:
                         rooms = sorted(rooms, key=lambda x: x[1])
                         # Start considering the human searched rooms based on ascending likelihood
                         # NEXT GOAL is the room with the smallest cost function
-                        self._tosearch = []
                         self._searchedRooms.pop(rooms[0][0])
-                        self._sendMessages = []
-                        self.received_messages = []
-                        self.received_messages_content = []
                         self._sendMessage(('Going to re-search', rooms[0][0]), 'RescueBot')
-                        self._phase = Phase.FIND_NEXT_GOAL
                     else:
-                        self._tosearch = []
                         self._searchedRooms = {}
-                        self._sendMessages = []
-                        self.received_messages = []
-                        self.received_messages_content = []
                         self._sendMessage('Going to re-search all areas.', 'RescueBot')
-                        self._phase = Phase.FIND_NEXT_GOAL
                 # If there are still areas to search, define which one to search next
                 else:
                     # Identify the closest door when the agent did not search any areas yet
