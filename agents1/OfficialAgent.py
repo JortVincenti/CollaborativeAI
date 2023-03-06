@@ -80,6 +80,14 @@ class BaselineAgent(ArtificialBrain):
         # Filtering of the world state before deciding on an action 
         return state
 
+    # Calculates cost for re-searching a room based on distance and willingness
+    def _distance_cost(self, state, destination, willingness):
+        loc = state[self.agent_id]['location']
+        destLoc = state.get_room_doors(destination)[0]['location']
+        distance = utils.get_distance(loc, destLoc)
+        # Normalize willingness from [-1, 1] to [0, 1]
+        return (willingness + 1)/2 * distance
+
     def decide_on_actions(self, state):
         # Identify team members
         agent_name = state[self.agent_id]['obj_id']
@@ -237,7 +245,7 @@ class BaselineAgent(ArtificialBrain):
                     self.received_messages_content = []
                     self._phase = Phase.FIND_NEXT_GOAL
                     if len(rooms) > 0:
-                        rooms = sorted(rooms, key=lambda x: x[1])
+                        rooms = sorted(rooms, key=lambda x: self._distance_cost(state, x[0], x[1]))
                         # Start considering the human searched rooms based on ascending likelihood
                         # NEXT GOAL is the room with the smallest cost function
                         self._searchedRooms.pop(rooms[0][0])
