@@ -810,11 +810,8 @@ class BaselineAgent(ArtificialBrain):
             #Base case from code example.
             if 'Collect' in message:
                 trustBeliefs[self._humanName]['competence'] += 0.10
-                trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1,
-                                                                      1)
-                trustBeliefs[self._humanName]['willingness'] += 0.10
-                trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1,
-                                                                      1)
+                trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
+
 
         print("Robot: ", self._sendMessages)
         print("------")
@@ -829,8 +826,8 @@ class BaselineAgent(ArtificialBrain):
 
             # Human says to robot "there is a x here" but robot doesnt find it.
             if "not present in" and "because I searched the whole area without finding" in sent_message:
-                trustBeliefs[self._humanName]['competence'] -= 0.10
-                trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1,1)
+                trustBeliefs[self._humanName]['willingness'] -= 0.10
+                trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['competence'], -1,1)
 
             # If human says there is an obstacle, then robot goes there. Two options:
                 # -Obstacle is there so increase competance
@@ -866,8 +863,8 @@ class BaselineAgent(ArtificialBrain):
 
         for message_human in receivedMessages: #For all the messages from human.
             if victim_name and not area_victim_found in message_human: #If in one of the message from the human the victim is mentioned but not the area
-                trustBeliefs[self._humanName]['competence'] -= 0.10
-                trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
+                trustBeliefs[self._humanName]['willingness'] -= 0.10
+                trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1, 1)
 
         return trustBeliefs
 
@@ -879,8 +876,8 @@ class BaselineAgent(ArtificialBrain):
         areas_searched_previously = re.findall('\d+', areas_searched_previously) #Take only the numbers
 
         if area_victim_found in areas_searched_previously:
-            trustBeliefs[self._humanName]['competence'] -= 0.10
-            trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
+            trustBeliefs[self._humanName]['willingness'] -= 0.10
+            trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1, 1)
 
         return trustBeliefs
 
@@ -907,18 +904,18 @@ class BaselineAgent(ArtificialBrain):
         try: #We try because there might be an index out of bounds, if the human just asked.
             if "Lets remove" and "blocking area" in self._sendMessages[index+1]:
                 # then add 0.1
-                trustBeliefs[self._humanName]['competence'] += 0.10
-                trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1,1)
+                trustBeliefs[self._humanName]['willingness'] += 0.10
+                trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['competence'], -1,1)
                 return trustBeliefs
             if "Removing" and "because you asked me to." in self._sendMessages[index+1]:
                 # then add 0.1
-                trustBeliefs[self._humanName]['competence'] += 0.10
-                trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1,1)
+                trustBeliefs[self._humanName]['willingness'] += 0.10
+                trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['competence'], -1,1)
                 return trustBeliefs
             else:
                 # if not the human lied about the obstacle.
-                trustBeliefs[self._humanName]['competence'] -= 0.10
-                trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1,1)
+                trustBeliefs[self._humanName]['willingness'] -= 0.10
+                trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['competence'], -1,1)
                 return trustBeliefs
 
         except: return trustBeliefs
@@ -926,7 +923,7 @@ class BaselineAgent(ArtificialBrain):
     # Robot asks for help but the human takes too long to answer.
     def long_to_answer(self, trustBeliefs, receivedMessages):
         # to implement
-        trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
+        trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1, 1)
         return trustBeliefs
 
 
