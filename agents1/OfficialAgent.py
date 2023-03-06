@@ -314,11 +314,11 @@ class BaselineAgent(ArtificialBrain):
                     if 'class_inheritance' in info and 'ObstacleObject' in info['class_inheritance'] and 'rock' in info['obj_id']:
                         objects.append(info)
                         # Communicate which obstacle is blocking the entrance
-                        if self._answered == False and not self._remove and not self._waiting:                  
+                        if self._answered == False and not self._remove and not self._waiting:
                             self._sendMessage('Found rock blocking ' + str(self._door['room_name']) + '. Please decide whether to "Remove" or "Continue" searching. \n \n \
                                 Important features to consider are: \n safe - victims rescued: ' + str(self._collectedVictims) + ' \n explore - areas searched: area ' + str(self._searchedRooms).replace('area ','') + ' \
                                 \n clock - removal time: 5 seconds \n afstand - distance between us: ' + self._distanceHuman ,'RescueBot')
-                            self._waiting = True                          
+                            self._waiting = True
                         # Determine the next area to explore if the human tells the agent not to remove the obstacle
                         if self.received_messages_content and self.received_messages_content[-1] == 'Continue' and not self._remove:
                             self._answered = True
@@ -493,12 +493,12 @@ class BaselineAgent(ArtificialBrain):
                                         Important features to consider are: \n safe - victims rescued: ' + str(self._collectedVictims) + '\n explore - areas searched: area ' + str(self._searchedRooms).replace('area ','') + '\n \
                                         clock - extra time when rescuing alone: 15 seconds \n afstand - distance between us: ' + self._distanceHuman,'RescueBot')
                                     self._waiting = True
-                                        
+
                                 if 'critical' in vic and self._answered == False and not self._waiting:
                                     self._sendMessage('Found ' + vic + ' in ' + self._door['room_name'] + '. Please decide whether to "Rescue" or "Continue" searching. \n\n \
                                         Important features to consider are: \n explore - areas searched: area ' + str(self._searchedRooms).replace('area','') + ' \n safe - victims rescued: ' + str(self._collectedVictims) + '\n \
                                         afstand - distance between us: ' + self._distanceHuman,'RescueBot')
-                                    self._waiting = True    
+                                    self._waiting = True
                     # Execute move actions to explore the area
                     return action, {}
 
@@ -673,7 +673,7 @@ class BaselineAgent(ArtificialBrain):
         '''
         process incoming messages received from the team members
         '''
-        
+
         receivedMessages = {}
         # Create a dictionary with a list of received messages from each team member
         for member in teamMembers:
@@ -833,6 +833,9 @@ class BaselineAgent(ArtificialBrain):
             if "Moving to area " and "to help you remove an obstacle." in sent_message:
                 trustBeliefs = self.obstacle_called_by_human(trustBeliefs, self._sendMessages.index(sent_message))
 
+            if "Found" in sent_message:
+                trustBeliefs = self.correct_response_human(trustBeliefs, self._sendMessages, self._sendMessages.index(sent_message))
+
 
             # Robot asks for help but the human takes too long to answer.
             if "Found" and "blocking area " and "Please decide whether to" and "or \"Continue\" searching":
@@ -875,6 +878,19 @@ class BaselineAgent(ArtificialBrain):
             trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
 
         return trustBeliefs
+
+    def correct_response_human(self, trustBeliefs, messages,index):
+        try: #try and catch because if the next message is not sent the application will crash.
+            if "Moving to area" and "to help you" in messages[index+1]:
+                trustBeliefs[self._humanName]['willingness'] -= 0.05 #If the human ignores the robot and asks something else then deacrease.
+                return trustBeliefs
+            else:
+                trustBeliefs[self._humanName]['willingness'] += 0.05 #If the human answer to the robot in any way
+                return trustBeliefs
+        except:
+            return trustBeliefs
+
+
 
 
     # If human says there is an obstacle, then robot goes there.
