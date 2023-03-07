@@ -839,7 +839,6 @@ class BaselineAgent(ArtificialBrain):
         print("------")
 
         # In case the human lies about the position of a victim and the robot finds out
-        print((self._liesAboutVictimsPosition))
         for i in range(self._liesAboutVictimsPosition):
             trustBeliefs[self._humanName]['willingness'] -= 0.1
             trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1, 1)
@@ -850,15 +849,17 @@ class BaselineAgent(ArtificialBrain):
                 trustBeliefs[self._humanName]['competence'] += 0.10
                 trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
 
-            #Every time the human asks for help to remove something, you decrease the competance
+            #Every time the human asks for help to remove something, you decrease the competence
             if "Remove: at" in message:
-                trustBeliefs[self._humanName]['competence'] -= 0.10
-                trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
+                if "stones" in message:
+                    trustBeliefs[self._humanName]['competence'] -= 0.10
+                    trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
 
-            # Every time the human asks for help to rescue a victim, you decrease the competance
+            # Every time the human asks for help to rescue a victim, you decrease the competence
             if "Found: " in message:
-                trustBeliefs[self._humanName]['competence'] -= 0.10
-                trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
+                if "mildly" in message:
+                    trustBeliefs[self._humanName]['competence'] -= 0.10
+                    trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
 
 
         print("Robot: ", self._sendMessages)
@@ -872,7 +873,7 @@ class BaselineAgent(ArtificialBrain):
                 #trustBeliefs = self.robot_finds_victim_in_searched_area(trustBeliefs, sent_message)
                 # increasing the willingness when the robot finds a victim thanks to what the human said
                 if 'because you told me' and ' was located here.' in sent_message:
-                    trustBeliefs[self._humanName]['willingness'] -= 0.10
+                    trustBeliefs[self._humanName]['willingness'] += 0.10
                     trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'],
                                                                            -1, 1)
 
@@ -938,7 +939,6 @@ class BaselineAgent(ArtificialBrain):
         try:  # We try because there might be an index out of bounds, if the robot just asked.
             if "Please come to" and "to carry" and "together." in self._sendMessages[index + 1]:
                 # then add 0.1
-                print("halo")
                 trustBeliefs[self._humanName]['competence'] += 0.10
                 trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'],
                                                                       -1, 1)
@@ -970,10 +970,9 @@ class BaselineAgent(ArtificialBrain):
     def correct_response_human(self, trustBeliefs, messages,index):
         try: #try and catch because if the next message is not sent the application will crash.
             if "Moving to area" and "to help you" in messages[index+1]:
-                trustBeliefs[self._humanName]['willingness'] -= 0.05 #If the human ignores the robot and asks something else then deacrease.
+                trustBeliefs[self._humanName]['willingness'] -= 0.05 #If the human ignores the robot and asks something else then decrease.
                 return trustBeliefs
             else:
-                trustBeliefs[self._humanName]['willingness'] += 0.05 #If the human answer to the robot in any way
                 return trustBeliefs
         except:
             return trustBeliefs
@@ -998,6 +997,10 @@ class BaselineAgent(ArtificialBrain):
                 trustBeliefs[self._humanName]['willingness'] += 0.10
                 trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1,1)
                 return trustBeliefs
+            elif "Please come to" in (self._sendMessages[index+1] or self._sendMessages[index+2]):
+                trustBeliefs[self._humanName]['willingness'] += 0.03
+                trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1,1)
+                return trustBeliefs
             else:
                 # if not the human lied about the obstacle.
                 trustBeliefs[self._humanName]['willingness'] -= 0.10
@@ -1018,7 +1021,7 @@ class BaselineAgent(ArtificialBrain):
             if index+1 not in self._message_with_time:
                 self._message_with_time[index+1] = time.time()
 
-            print("Time:", self._message_with_time[index+1] - self._message_with_time[index])
+            #print("Time:", self._message_with_time[index+1] - self._message_with_time[index])
             if self._message_with_time[index+1] - self._message_with_time[index] > 15: #If the human takes more then 15 seconds to answer (Its not 15 but with lag).
                 trustBeliefs[self._humanName]['willingness'] -= 0.003
                 trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1, 1)
