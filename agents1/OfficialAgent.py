@@ -839,10 +839,9 @@ class BaselineAgent(ArtificialBrain):
                 trustBeliefs = self.correct_response_human(trustBeliefs, self._sendMessages, self._sendMessages.index(sent_message))
 
             # Robot asks for help but the human takes too long to answer.
-            if ("Found" and "blocking" and "Please decide whether to") in sent_message:
-                print(sent_message)
-                print("yo")
-                trustBeliefs = self.human_helps_robot_obstacles(trustBeliefs, self._sendMessages.index(sent_message))
+            if "Found" and "Please decide whether to" in sent_message:
+                if "blocking" in sent_message:
+                    trustBeliefs = self.human_helps_robot_obstacles(trustBeliefs, self._sendMessages.index(sent_message))
 
 
         print("-Start trust beliefs-")
