@@ -41,6 +41,7 @@ class BaselineAgent(ArtificialBrain):
     def __init__(self, slowdown, condition, name, folder):
         super().__init__(slowdown, condition, name, folder)
         # Initialization of some relevant variables
+        self._liesAboutVictimsPosition = 0
         self._slowdown = slowdown
         self._condition = condition
         self._humanName = name
@@ -468,6 +469,34 @@ class BaselineAgent(ArtificialBrain):
                             if vic not in self._roomVics:
                                 self._roomVics.append(vic)
 
+                            if vic in self._foundVictims and not (self._foundVictimLocs[vic]['room'] == (self._door['room_name'])):
+                                print('said by human', self._foundVictimLocs[vic]['room'])
+                                print('actual location', self._door['room_name'])
+                                self._recentVic = vic
+                                self._foundVictimLocs[vic] = {'location': info['location'],
+                                                              'room': self._door['room_name'],
+                                                              'obj_id': info['obj_id']}
+
+                                self._liesAboutVictimsPosition += 1
+
+                                # Communicate which victim the agent found and ask the human whether to rescue the victim now or at a later stage
+                                if 'mild' in vic and self._answered == False and not self._waiting:
+                                    self._sendMessage('Found ' + vic + ' in ' + self._door['room_name'] + '. Please decide whether to "Rescue together", "Rescue alone", or "Continue" searching. \n \n \
+                                        Important features to consider are: \n safe - victims rescued: ' + str(
+                                        self._collectedVictims) + '\n explore - areas searched: area ' + str(
+                                        self._searchedRooms).replace('area ', '') + '\n \
+                                        clock - extra time when rescuing alone: 15 seconds \n afstand - distance between us: ' + self._distanceHuman,
+                                                      'RescueBot')
+                                    self._waiting = True
+
+                                if 'critical' in vic and self._answered == False and not self._waiting:
+                                    self._sendMessage('Found ' + vic + ' in ' + self._door['room_name'] + '. Please decide whether to "Rescue" or "Continue" searching. \n\n \
+                                        Important features to consider are: \n explore - areas searched: area ' + str(
+                                        self._searchedRooms).replace('area', '') + ' \n safe - victims rescued: ' + str(
+                                        self._collectedVictims) + '\n \
+                                        afstand - distance between us: ' + self._distanceHuman, 'RescueBot')
+                                    self._waiting = True
+
                             # Identify the exact location of the victim that was found by the human earlier
                             if vic in self._foundVictims and 'location' not in self._foundVictimLocs[vic].keys():
                                 self._recentVic = vic
@@ -483,23 +512,25 @@ class BaselineAgent(ArtificialBrain):
                                     self._phase = Phase.FIND_NEXT_GOAL
 
                             # Identify injured victim in the area
-                            if 'healthy' not in vic and vic not in self._foundVictims:
-                                self._recentVic = vic
-                                # Add the victim and the location to the corresponding dictionary
-                                self._foundVictims.append(vic)
-                                self._foundVictimLocs[vic] = {'location': info['location'],'room': self._door['room_name'], 'obj_id': info['obj_id']}
-                                # Communicate which victim the agent found and ask the human whether to rescue the victim now or at a later stage
-                                if 'mild' in vic and self._answered == False and not self._waiting:
-                                    self._sendMessage('Found ' + vic + ' in ' + self._door['room_name'] + '. Please decide whether to "Rescue together", "Rescue alone", or "Continue" searching. \n \n \
-                                        Important features to consider are: \n safe - victims rescued: ' + str(self._collectedVictims) + '\n explore - areas searched: area ' + str(self._searchedRooms).replace('area ','') + '\n \
-                                        clock - extra time when rescuing alone: 15 seconds \n afstand - distance between us: ' + self._distanceHuman,'RescueBot')
-                                    self._waiting = True
+                            if 'healthy' not in vic:
+                                if vic not in self._foundVictims:
+                                    self._recentVic = vic
+                                    # Add the victim and the location to the corresponding dictionary
+                                    self._foundVictims.append(vic)
+                                    self._foundVictimLocs[vic] = {'location': info['location'],'room': self._door['room_name'], 'obj_id': info['obj_id']}
 
-                                if 'critical' in vic and self._answered == False and not self._waiting:
-                                    self._sendMessage('Found ' + vic + ' in ' + self._door['room_name'] + '. Please decide whether to "Rescue" or "Continue" searching. \n\n \
-                                        Important features to consider are: \n explore - areas searched: area ' + str(self._searchedRooms).replace('area','') + ' \n safe - victims rescued: ' + str(self._collectedVictims) + '\n \
-                                        afstand - distance between us: ' + self._distanceHuman,'RescueBot')
-                                    self._waiting = True
+                                    # Communicate which victim the agent found and ask the human whether to rescue the victim now or at a later stage
+                                    if 'mild' in vic and self._answered == False and not self._waiting:
+                                        self._sendMessage('Found ' + vic + ' in ' + self._door['room_name'] + '. Please decide whether to "Rescue together", "Rescue alone", or "Continue" searching. \n \n \
+                                            Important features to consider are: \n safe - victims rescued: ' + str(self._collectedVictims) + '\n explore - areas searched: area ' + str(self._searchedRooms).replace('area ','') + '\n \
+                                            clock - extra time when rescuing alone: 15 seconds \n afstand - distance between us: ' + self._distanceHuman,'RescueBot')
+                                        self._waiting = True
+
+                                    if 'critical' in vic and self._answered == False and not self._waiting:
+                                        self._sendMessage('Found ' + vic + ' in ' + self._door['room_name'] + '. Please decide whether to "Rescue" or "Continue" searching. \n\n \
+                                            Important features to consider are: \n explore - areas searched: area ' + str(self._searchedRooms).replace('area','') + ' \n safe - victims rescued: ' + str(self._collectedVictims) + '\n \
+                                            afstand - distance between us: ' + self._distanceHuman,'RescueBot')
+                                        self._waiting = True
                     # Execute move actions to explore the area
                     return action, {}
 
@@ -807,6 +838,12 @@ class BaselineAgent(ArtificialBrain):
         print("Human", receivedMessages)
         print("------")
 
+        # In case the human lies about the position of a victim and the robot finds out
+        print((self._liesAboutVictimsPosition))
+        for i in range(self._liesAboutVictimsPosition):
+            trustBeliefs[self._humanName]['willingness'] -= 0.1
+            trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1, 1)
+
         for message in receivedMessages:
             #Base case from code example.
             if 'Collect' in message:
@@ -831,9 +868,14 @@ class BaselineAgent(ArtificialBrain):
 
             #if victim found
             if ("Found" and "injured" and "in area ") in sent_message:
-                print(sent_message)
-                #trustBeliefs = self.robots_finds_victim_in_other_room_then_human_appointed(trustBeliefs, sent_message, receivedMessages)
+                trustBeliefs = self.human_helps_robot_victims(trustBeliefs, self._sendMessages.index(sent_message))
                 #trustBeliefs = self.robot_finds_victim_in_searched_area(trustBeliefs, sent_message)
+                # increasing the willingness when the robot finds a victim thanks to what the human said
+                if 'because you told me' and ' was located here.' in sent_message:
+                    trustBeliefs[self._humanName]['willingness'] -= 0.10
+                    trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'],
+                                                                           -1, 1)
+
 
             # Human says to robot "there is a x here" but robot doesnt find it.
             if "not present in" and "because I searched the whole area without finding" in sent_message:
@@ -849,11 +891,12 @@ class BaselineAgent(ArtificialBrain):
             if "Found" in sent_message:
                 trustBeliefs = self.correct_response_human(trustBeliefs, self._sendMessages, self._sendMessages.index(sent_message))
 
-
             # Robot asks for help but the human takes too long to answer.
+            if "Found" and "Please decide whether to" in sent_message:
+                if "blocking" in sent_message:
+                    trustBeliefs = self.human_helps_robot_obstacles(trustBeliefs, self._sendMessages.index(sent_message))
             if "Found" and "Please decide whether to" and "or \"Continue\" searching" in sent_message:
                 trustBeliefs = self.long_to_answer(trustBeliefs, self._sendMessages.index(sent_message))
-
 
 
         print("-Start trust beliefs-")
@@ -868,16 +911,48 @@ class BaselineAgent(ArtificialBrain):
 
         return trustBeliefs
 
-    def robots_finds_victim_in_other_room_then_human_appointed(self, trustBeliefs, message, receivedMessages):
-        victim_name = re.search('Found (.*) in area', message).group(1) #Take the name of the victim that has just been found.
-        area_victim_found = re.search(' in area (.*).', message).group(1) #Take the area of the victim that has just been found.
+    # If robot says there is an obstacle, the human can either:
+    # Two options:
+    # - Human helps, increase competence
+    # - Human doesn't help, don't do anything
+    # -  If the human says to continue, don't do anything as maybe it was not efficient to remove the obstacle right now
+    def human_helps_robot_obstacles(self, trustBeliefs, index):
+        try:  # We try because there might be an index out of bounds, if the robot just asked.
+            if "Please come to " and "to remove" and "together." in self._sendMessages[index + 1]:
+                # then add 0.1
+                trustBeliefs[self._humanName]['competence'] += 0.10
+                trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'],
+                                                                       -1, 1)
+                return trustBeliefs
+            else:
+                return trustBeliefs
+        except:
+            return trustBeliefs
 
-        for message_human in receivedMessages: #For all the messages from human.
-            if victim_name and not area_victim_found in message_human: #If in one of the message from the human the victim is mentioned but not the area
-                trustBeliefs[self._humanName]['willingness'] -= 0.10
-                trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1, 1)
-
-        return trustBeliefs
+    # If robot says finds a victim, the human can either:
+    # Two options:
+    # - Human helps, increase competence
+    # - Human doesn't help, don't do anything
+    # - If the human says to continue, don't do anything as maybe it was not efficient to remove the obstacle right now
+    def human_helps_robot_victims(self, trustBeliefs, index):
+        try:  # We try because there might be an index out of bounds, if the robot just asked.
+            if "Please come to" and "to carry" and "together." in self._sendMessages[index + 1]:
+                # then add 0.1
+                print("halo")
+                trustBeliefs[self._humanName]['competence'] += 0.10
+                trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'],
+                                                                      -1, 1)
+                return trustBeliefs
+            elif "Lets carry" and "together!" in self._sendMessages[index + 1]:
+                # then add 0.1
+                trustBeliefs[self._humanName]['competence'] += 0.10
+                trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'],
+                                                                       -1, 1)
+                return trustBeliefs
+            else:
+                return trustBeliefs
+        except:
+            return trustBeliefs
 
     #TO DO: I dont know if this works right now as the robot will not double check the rooms the human already did.
     def robot_finds_victim_in_searched_area(self, trustBeliefs, message):
