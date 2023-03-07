@@ -71,6 +71,7 @@ class BaselineAgent(ArtificialBrain):
         self._recentVic = None
         self._receivedMessages = []
         self._moving = False
+        self._message_with_time = {}
 
     def initialize(self):
         # Initialization of the state tracker and navigation algorithm
@@ -850,8 +851,8 @@ class BaselineAgent(ArtificialBrain):
 
 
             # Robot asks for help but the human takes too long to answer.
-            if "Found" and "blocking area " and "Please decide whether to" and "or \"Continue\" searching":
-                trustBeliefs = self.long_to_answer(trustBeliefs, receivedMessages)
+            if "Found" and "Please decide whether to" and "or \"Continue\" searching" in sent_message:
+                trustBeliefs = self.long_to_answer(trustBeliefs, self._sendMessages.index(sent_message))
 
 
 
@@ -931,11 +932,24 @@ class BaselineAgent(ArtificialBrain):
         except: return trustBeliefs
 
     # Robot asks for help but the human takes too long to answer.
-    def long_to_answer(self, trustBeliefs, receivedMessages):
+    def long_to_answer(self, trustBeliefs, index):
         # to implement
-        trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1, 1)
-        return trustBeliefs
+        if index not in self._message_with_time:
+            self._message_with_time[index] = time.time()
 
+        try:
+            (self._sendMessages[index+1]) #Condition to try if crashes then the second message hasnt been sent yet meaning the robot is still waiting for an answer.
+
+            if index+1 not in self._message_with_time:
+                self._message_with_time[index+1] = time.time()
+
+            print("Time:", self._message_with_time[index+1] - self._message_with_time[index])
+            if self._message_with_time[index+1] - self._message_with_time[index] > 15: #If the human takes more then 15 seconds to answer (Its not 15 but with lag).
+                trustBeliefs[self._humanName]['willingness'] -= 0.003
+                trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1, 1)
+
+            return trustBeliefs
+        except: return trustBeliefs
 
 
     def _sendMessage(self, mssg, sender):
