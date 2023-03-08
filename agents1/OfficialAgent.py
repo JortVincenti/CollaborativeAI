@@ -247,7 +247,7 @@ class BaselineAgent(ArtificialBrain):
                     if len(rooms) > 0:
 
                         # Filter into list of prioritized rooms to check
-                        victimLocations = [v['room'] for v in self._foundVictimLocs.values()]
+                        victimLocations = [v['room'] for v in self._foundVictimLocs.values() if v['likelihood'] != 1]
                         # Filter rooms in searchedRooms to prioritize (human checked)
                         victimRooms = [(room['room_name'], self._searchedRooms[room['room_name']]) for room in state.values()
                                        if 'class_inheritance' in room
@@ -510,7 +510,7 @@ class BaselineAgent(ArtificialBrain):
                             if vic in self._foundVictims and 'location' not in self._foundVictimLocs[vic].keys():
                                 self._recentVic = vic
                                 # Add the exact victim location to the corresponding dictionary
-                                self._foundVictimLocs[vic] = {'location': info['location'],'room': self._door['room_name'], 'obj_id': info['obj_id']}
+                                self._foundVictimLocs[vic] = {'location': info['location'],'room': self._door['room_name'], 'obj_id': info['obj_id'], 'likelihood': 1}
                                 if vic == self._goalVic:
                                     # Communicate which victim was found
                                     self._sendMessage('Found ' + vic + ' in ' + self._door['room_name'] + ' because you told me ' + vic + ' was located here.','RescueBot')
@@ -525,7 +525,7 @@ class BaselineAgent(ArtificialBrain):
                                 self._recentVic = vic
                                 # Add the victim and the location to the corresponding dictionary
                                 self._foundVictims.append(vic)
-                                self._foundVictimLocs[vic] = {'location': info['location'],'room': self._door['room_name'], 'obj_id': info['obj_id']}
+                                self._foundVictimLocs[vic] = {'location': info['location'],'room': self._door['room_name'], 'obj_id': info['obj_id'], 'likelihood': 1}
                                 # Communicate which victim the agent found and ask the human whether to rescue the victim now or at a later stage
                                 if 'mild' in vic and self._answered == False and not self._waiting:
                                     self._sendMessage('Found ' + vic + ' in ' + self._door['room_name'] + '. Please decide whether to "Rescue together", "Rescue alone", or "Continue" searching. \n \n \
