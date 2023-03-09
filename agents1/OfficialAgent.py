@@ -233,7 +233,6 @@ class BaselineAgent(ArtificialBrain):
                                    and room['room_name'] not in self._searchedRooms
                                    and room['room_name'] not in self._tosearch]
                 # If all areas have been searched but the task is not finished, start searching areas again
-                #TODO Baseline for cost function.
                 if self._remainingZones and len(unsearchedRooms) == 0:
                     # Filter out the rooms searched by the robot (likelihood value of 1)
                     rooms = [(room['room_name'], self._searchedRooms[room['room_name']]) for room in state.values()
@@ -242,17 +241,26 @@ class BaselineAgent(ArtificialBrain):
                              and room['room_name'] in self._searchedRooms
                              and room['room_name'] not in self._tosearch
                              and self._searchedRooms[room['room_name']] != 1]
-                    self._tosearch = []
-                    self._sendMessages = []
-                    self.received_messages = []
-                    self.received_messages_content = []
+                    #self._tosearch = []
+                    #self._sendMessages = []
+                    #self.received_messages = []
+                    #self.received_messages_content = []
                     self._phase = Phase.FIND_NEXT_GOAL
                     if len(rooms) > 0:
-                        rooms = sorted(rooms, key=lambda x: self._distance_cost(state, x[0], x[1]))
-                        # Start considering the human searched rooms based on ascending likelihood
-                        # NEXT GOAL is the room with the smallest cost function
-                        self._searchedRooms.pop(rooms[0][0])
-                        self._sendMessage(('Going to re-search', rooms[0][0]), 'RescueBot')
+                        # Filter into list of prioritized rooms to check
+                        victimLocations = [(v['room'], v['likelihood']) for v in self._foundVictimLocs.values() if v['likelihood'] != 1]
+                        # Prioritize the claimed victim location rooms first, else continue without prioritized rooms
+                        if len(victimLocations) > 0:
+                            sortedLocations = sorted(victimLocations, key=lambda x: self._distance_cost(state, x[0], x[1]))
+                            self._searchedRooms.pop(sortedLocations[0][0])
+                            self._sendMessage('Going to check for victim in ' + str(sortedLocations[0][0]), 'RescueBot')
+                        else:
+                            rooms = sorted(rooms, key=lambda x: self._distance_cost(state, x[0], x[1]))
+                            # Start considering the human searched rooms based on ascending likelihood
+                            # NEXT GOAL is the room with the smallest cost function
+                            self._searchedRooms.pop(rooms[0][0])
+                            self._sendMessage('Going to re-search ' + str(rooms[0][0]), 'RescueBot')
+                            print(str(self._searchedRooms))
                     else:
                         self._searchedRooms = {}
                         self._sendMessage('Going to re-search all areas.', 'RescueBot')
@@ -499,7 +507,8 @@ class BaselineAgent(ArtificialBrain):
                                 self._recentVic = vic
                                 self._foundVictimLocs[vic] = {'location': info['location'],
                                                               'room': self._door['room_name'],
-                                                              'obj_id': info['obj_id']}
+                                                              'obj_id': info['obj_id'],
+                                                              'likelihood': 1}
 
                                 self._liesAboutVictimsPosition += 1
 
@@ -525,7 +534,7 @@ class BaselineAgent(ArtificialBrain):
                             if vic in self._foundVictims and 'location' not in self._foundVictimLocs[vic].keys():
                                 self._recentVic = vic
                                 # Add the exact victim location to the corresponding dictionary
-                                self._foundVictimLocs[vic] = {'location': info['location'],'room': self._door['room_name'], 'obj_id': info['obj_id']}
+                                self._foundVictimLocs[vic] = {'location': info['location'],'room': self._door['room_name'], 'obj_id': info['obj_id'], 'likelihood': 1}
                                 if vic == self._goalVic:
                                     # Communicate which victim was found
                                     self._sendMessage('Found ' + vic + ' in ' + self._door['room_name'] + ' because you told me ' + vic + ' was located here.','RescueBot')
@@ -541,7 +550,7 @@ class BaselineAgent(ArtificialBrain):
                                     self._recentVic = vic
                                     # Add the victim and the location to the corresponding dictionary
                                     self._foundVictims.append(vic)
-                                    self._foundVictimLocs[vic] = {'location': info['location'],'room': self._door['room_name'], 'obj_id': info['obj_id']}
+                                    self._foundVictimLocs[vic] = {'location': info['location'],'room': self._door['room_name'], 'obj_id': info['obj_id'], 'likelihood': 1}
 
                                     # Communicate which victim the agent found and ask the human whether to rescue the victim now or at a later stage
                                     if 'mild' in vic and self._answered == False and not self._waiting:
@@ -740,13 +749,13 @@ class BaselineAgent(ArtificialBrain):
                     receivedMessages[member].append(mssg.content)
         # Check the content of the received messages
         for name,mssgs in receivedMessages.items(): # member name, and the messages they sent
+            willingness = trustBeliefs[name]['willingness']
             for msg in mssgs:
                 # If a received message involves team members searching areas, add these areas to the memory of areas that have been explored
                 if msg.startswith("Search:"):
                     area = 'area ' + msg.split()[-1]
                     if area not in self._searchedRooms:
                         # Trust scenario 1: Human claims to go search a room
-                        willingness = trustBeliefs[name]['willingness']
                         self._searchedRooms[area] = willingness
                 # If a received message involves team members finding victims, add these victims and their locations to memory
                 if msg.startswith("Found:"):
@@ -758,14 +767,13 @@ class BaselineAgent(ArtificialBrain):
                     loc = 'area ' + msg.split()[-1]
                     # Add the area to the memory of searched areas
                     if loc not in self._searchedRooms:
-                        willingness = trustBeliefs[name]['willingness']
                         self._searchedRooms[loc] = willingness
                     # Add the victim and its location to memory
                     if foundVic not in self._foundVictims:
                         self._foundVictims.append(foundVic)
-                        self._foundVictimLocs[foundVic] = {'room': loc}
+                        self._foundVictimLocs[foundVic] = {'room': loc, 'likelihood': willingness}
                     if foundVic in self._foundVictims and self._foundVictimLocs[foundVic]['room'] != loc:
-                        self._foundVictimLocs[foundVic] = {'room': loc}
+                        self._foundVictimLocs[foundVic] = {'room': loc, 'likelihood': willingness}
                     # Decide to help the human carry a found victim when the human's condition is 'weak'
                     if condition=='weak':
                         self._rescue = 'together'
@@ -782,14 +790,13 @@ class BaselineAgent(ArtificialBrain):
                     loc = 'area ' + msg.split()[-1]
                     # Add the area to the memory of searched areas
                     if loc not in self._searchedRooms:
-                        willingness = trustBeliefs[name]['willingness']
                         self._searchedRooms[loc] = willingness
                     # Add the victim and location to the memory of found victims
                     if collectVic not in self._foundVictims:
                         self._foundVictims.append(collectVic)
-                        self._foundVictimLocs[collectVic] = {'room': loc}
+                        self._foundVictimLocs[collectVic] = {'room': loc, 'likelihood': willingness}
                     if collectVic in self._foundVictims and self._foundVictimLocs[collectVic]['room'] != loc:
-                        self._foundVictimLocs[collectVic] = {'room': loc}
+                        self._foundVictimLocs[collectVic] = {'room': loc, 'likelihood': willingness}
                     # Add the victim to the memory of rescued victims when the human's condition is not weak
                     if condition!='weak' and collectVic not in self._collectedVictims:
                         self._collectedVictims.append(collectVic)
