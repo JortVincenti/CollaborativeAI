@@ -73,6 +73,7 @@ class BaselineAgent(ArtificialBrain):
         self._receivedMessages = []
         self._moving = False
         self._message_with_time = {}
+        self._obstacle_is_rock = {}
 
     def initialize(self):
         # Initialization of the state tracker and navigation algorithm
@@ -838,6 +839,7 @@ class BaselineAgent(ArtificialBrain):
         print("Human", receivedMessages)
         print("------")
 
+
         # In case the human lies about the position of a victim and the robot finds out
         for i in range(self._liesAboutVictimsPosition):
             trustBeliefs[self._humanName]['willingness'] -= 0.1
@@ -851,15 +853,23 @@ class BaselineAgent(ArtificialBrain):
 
             #Every time the human asks for help to remove something, you decrease the competence
             if "Remove: at" in message:
-                if "stones" in message:
-                    trustBeliefs[self._humanName]['competence'] -= 0.10
-                    trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
+                if message not in self._obstacle_is_rock:
+                    self._obstacle_is_rock[message] = (len(self._sendMessages), self._distanceHuman)
+                print("tuple-------", self._obstacle_is_rock[message])
+                try:
+                    if "stones" in self._sendMessages[self._obstacle_is_rock[message][0]]: #If the robot finds out it a stone that they have to remove.
+                        if self._obstacle_is_rock[message][1] != "close": #Check if the human was far from the robot when he asked for help.
+                            trustBeliefs[self._humanName]['competence'] -= 0.10
+                            trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
+                except:
+                    continue
 
             # Every time the human asks for help to rescue a victim, you decrease the competence
             if "Found: " in message:
                 if "mildly" in message:
-                    trustBeliefs[self._humanName]['competence'] -= 0.10
-                    trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
+                    if self._distanceHuman != "close": #If they are far away from each other, it is not advantageous time wise to ask for help.
+                        trustBeliefs[self._humanName]['competence'] -= 0.10
+                        trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
 
 
         print("Robot: ", self._sendMessages)
@@ -869,7 +879,7 @@ class BaselineAgent(ArtificialBrain):
 
             #if victim found
             if ("Found" and "injured" and "in area ") in sent_message:
-                trustBeliefs = self.human_helps_robot_victims(trustBeliefs, self._sendMessages.index(sent_message))
+                #trustBeliefs = self.human_helps_robot_victims(trustBeliefs, self._sendMessages.index(sent_message))
                 #trustBeliefs = self.robot_finds_victim_in_searched_area(trustBeliefs, sent_message)
                 # increasing the willingness when the robot finds a victim thanks to what the human said
                 if 'because you told me' and ' was located here.' in sent_message:
@@ -893,9 +903,9 @@ class BaselineAgent(ArtificialBrain):
                 trustBeliefs = self.correct_response_human(trustBeliefs, self._sendMessages, self._sendMessages.index(sent_message))
 
             # Robot asks for help but the human takes too long to answer.
-            if "Found" and "Please decide whether to" in sent_message:
-                if "blocking" in sent_message:
-                    trustBeliefs = self.human_helps_robot_obstacles(trustBeliefs, self._sendMessages.index(sent_message))
+            # if "Found" and "Please decide whether to" in sent_message:
+            #     if "blocking" in sent_message:
+            #         trustBeliefs = self.human_helps_robot_obstacles(trustBeliefs, self._sendMessages.index(sent_message))
             if "Found" and "Please decide whether to" and "or \"Continue\" searching" in sent_message:
                 trustBeliefs = self.long_to_answer(trustBeliefs, self._sendMessages.index(sent_message))
 
@@ -917,42 +927,42 @@ class BaselineAgent(ArtificialBrain):
     # - Human helps, increase competence
     # - Human doesn't help, don't do anything
     # -  If the human says to continue, don't do anything as maybe it was not efficient to remove the obstacle right now
-    def human_helps_robot_obstacles(self, trustBeliefs, index):
-        try:  # We try because there might be an index out of bounds, if the robot just asked.
-            if "Please come to " and "to remove" and "together." in self._sendMessages[index + 1]:
-                # then add 0.1
-                trustBeliefs[self._humanName]['competence'] += 0.10
-                trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'],
-                                                                       -1, 1)
-                return trustBeliefs
-            else:
-                return trustBeliefs
-        except:
-            return trustBeliefs
+    # def human_helps_robot_obstacles(self, trustBeliefs, index):
+    #     try:  # We try because there might be an index out of bounds, if the robot just asked.
+    #         if "Please come to " and "to remove" and "together." in self._sendMessages[index + 1]:
+    #             # then add 0.1
+    #             trustBeliefs[self._humanName]['competence'] += 0.10
+    #             trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'],
+    #                                                                    -1, 1)
+    #             return trustBeliefs
+    #         else:
+    #             return trustBeliefs
+    #     except:
+    #         return trustBeliefs
 
     # If robot says finds a victim, the human can either:
     # Two options:
     # - Human helps, increase competence
     # - Human doesn't help, don't do anything
     # - If the human says to continue, don't do anything as maybe it was not efficient to remove the obstacle right now
-    def human_helps_robot_victims(self, trustBeliefs, index):
-        try:  # We try because there might be an index out of bounds, if the robot just asked.
-            if "Please come to" and "to carry" and "together." in self._sendMessages[index + 1]:
-                # then add 0.1
-                trustBeliefs[self._humanName]['competence'] += 0.10
-                trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'],
-                                                                      -1, 1)
-                return trustBeliefs
-            elif "Lets carry" and "together!" in self._sendMessages[index + 1]:
-                # then add 0.1
-                trustBeliefs[self._humanName]['competence'] += 0.10
-                trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'],
-                                                                       -1, 1)
-                return trustBeliefs
-            else:
-                return trustBeliefs
-        except:
-            return trustBeliefs
+    # def human_helps_robot_victims(self, trustBeliefs, index):
+    #     try:  # We try because there might be an index out of bounds, if the robot just asked.
+    #         if "Please come to" and "to carry" and "together." in self._sendMessages[index + 1]:
+    #             # then add 0.1
+    #             trustBeliefs[self._humanName]['competence'] += 0.10
+    #             trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'],
+    #                                                                   -1, 1)
+    #             return trustBeliefs
+    #         elif "Lets carry" and "together!" in self._sendMessages[index + 1]:
+    #             # then add 0.1
+    #             trustBeliefs[self._humanName]['competence'] += 0.10
+    #             trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'],
+    #                                                                    -1, 1)
+    #             return trustBeliefs
+    #         else:
+    #             return trustBeliefs
+    #     except:
+    #         return trustBeliefs
 
     #TO DO: I dont know if this works right now as the robot will not double check the rooms the human already did.
     def robot_finds_victim_in_searched_area(self, trustBeliefs, message):
@@ -1023,7 +1033,7 @@ class BaselineAgent(ArtificialBrain):
 
             #print("Time:", self._message_with_time[index+1] - self._message_with_time[index])
             if self._message_with_time[index+1] - self._message_with_time[index] > 15: #If the human takes more then 15 seconds to answer (Its not 15 but with lag).
-                trustBeliefs[self._humanName]['willingness'] -= 0.003
+                trustBeliefs[self._humanName]['willingness'] -= 0.05
                 trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1, 1)
 
             return trustBeliefs
