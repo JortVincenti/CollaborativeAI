@@ -14,4 +14,7 @@
 .DS_Store
 .idea
 
+beliefs/currentTrustBeliefs.csv
+
+/logs/
 
