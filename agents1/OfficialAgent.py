@@ -253,13 +253,11 @@ class BaselineAgent(ArtificialBrain):
                         if len(victimLocations) > 0:
                             sortedLocations = sorted(victimLocations, key=lambda x: self._distance_cost(state, x[0], x[1]))
                             self._searchedRooms.pop(sortedLocations[0][0])
-                            self._sendMessage('Going to check for victim in ' + str(sortedLocations[0][0]), 'RescueBot')
                         else:
                             rooms = sorted(rooms, key=lambda x: self._distance_cost(state, x[0], x[1]))
                             # Start considering the human searched rooms based on ascending likelihood
                             # NEXT GOAL is the room with the smallest cost function
                             self._searchedRooms.pop(rooms[0][0])
-                            self._sendMessage('Going to re-search ' + str(rooms[0][0]), 'RescueBot')
                             print(str(self._searchedRooms))
                     else:
                         self._searchedRooms = {}
