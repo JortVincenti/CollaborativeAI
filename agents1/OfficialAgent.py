@@ -750,6 +750,7 @@ class BaselineAgent(ArtificialBrain):
         # Check the content of the received messages
         for name,mssgs in receivedMessages.items(): # member name, and the messages they sent
             willingness = trustBeliefs[name]['willingness']
+            competence = trustBeliefs[name]['competence']
             for msg in mssgs:
                 # If a received message involves team members searching areas, add these areas to the memory of areas that have been explored
                 if msg.startswith("Search:"):
@@ -809,7 +810,7 @@ class BaselineAgent(ArtificialBrain):
                     area = 'area ' + msg.split()[-1]
                     # Calculate the cost with inverted willingness, because we want the cost to be high if the human is lying in this scenario
                     cost = self._distance_cost(state, area, -willingness)
-                    threshold = 3
+                    threshold = 3 * (-competence + 1) / 2
                     if cost < threshold:
                         if not self._carrying:
                             # Identify at which location the human needs help
