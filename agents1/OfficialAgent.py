@@ -806,29 +806,32 @@ class BaselineAgent(ArtificialBrain):
                 # If a received message involves team members asking for help with removing obstacles, add their location to memory and come over
                 if msg.startswith('Remove:'):
                     # Come over immediately when the agent is not carrying a victim
-                    if not self._carrying:
-                        # Identify at which location the human needs help
-                        area = 'area ' + msg.split()[-1]
-                        self._door = state.get_room_doors(area)[0]
-                        self._doormat = state.get_room(area)[-1]['doormat']
-                        if area in self._searchedRooms:
-                            self._searchedRooms.pop(area)
-                        # Clear received messages (bug fix)
-                        self.received_messages = []
-                        self.received_messages_content = []
-                        self._moving = True
-                        self._remove = True
-                        if self._waiting and self._recentVic:
-                            self._todo.append(self._recentVic)
-                        self._waiting = False
-                        # Let the human know that the agent is coming over to help
-                        self._sendMessage('Moving to ' + str(self._door['room_name']) + ' to help you remove an obstacle.','RescueBot')
-                        # Plan the path to the relevant area
-                        self._phase = Phase.PLAN_PATH_TO_ROOM
-                    # Come over to help after dropping a victim that is currently being carried by the agent
-                    else:
-                        area = 'area ' + msg.split()[-1]
-                        self._sendMessage('Will come to ' + area + ' after dropping ' + self._goalVic + '.','RescueBot')
+                    area = 'area ' + msg.split()[-1]
+                    # Calculate the cost with inverted willingness, because we want the cost to be high if the human is lying in this scenario
+                    cost = self._distance_cost(state, area, -willingness)
+                    threshold = 3
+                    if cost < threshold:
+                        if not self._carrying:
+                            # Identify at which location the human needs help
+                            self._door = state.get_room_doors(area)[0]
+                            self._doormat = state.get_room(area)[-1]['doormat']
+                            if area in self._searchedRooms:
+                                self._searchedRooms.pop(area)
+                            # Clear received messages (bug fix)
+                            self.received_messages = []
+                            self.received_messages_content = []
+                            self._moving = True
+                            self._remove = True
+                            if self._waiting and self._recentVic:
+                                self._todo.append(self._recentVic)
+                            self._waiting = False
+                            # Let the human know that the agent is coming over to help
+                            self._sendMessage('Moving to ' + str(self._door['room_name']) + ' to help you remove an obstacle.','RescueBot')
+                            # Plan the path to the relevant area
+                            self._phase = Phase.PLAN_PATH_TO_ROOM
+                        # Come over to help after dropping a victim that is currently being carried by the agent
+                        else:
+                            self._sendMessage('Will come to ' + area + ' after dropping ' + self._goalVic + '.','RescueBot')
             # Store the current location of the human in memory
             if mssgs and mssgs[-1].split()[-1] in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14']:
                 self._humanLoc = int(mssgs[-1].split()[-1])
@@ -934,10 +937,6 @@ class BaselineAgent(ArtificialBrain):
             if "Found" and "Please decide whether to" and "or \"Continue\" searching" in sent_message:
                 trustBeliefs = self.long_to_answer(trustBeliefs, self._sendMessages.index(sent_message))
 
-
-        print("-Start trust beliefs-")
-        print(trustBeliefs)
-        print("-End trust beliefs-")
 
         # Save current trust belief values so we can later use and retrieve them to add to a csv file with all the logged trust belief values
         with open(folder + '/beliefs/currentTrustBelief.csv', mode='w') as csv_file:
