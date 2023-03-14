@@ -74,6 +74,7 @@ class BaselineAgent(ArtificialBrain):
         self._moving = False
         self._message_with_time = {}
         self._obstacle_is_rock = {}
+        self._confidence_increment = 0.01 # Confidence levels are between [0,1]
 
     def initialize(self):
         # Initialization of the state tracker and navigation algorithm
@@ -858,12 +859,14 @@ class BaselineAgent(ArtificialBrain):
                     name = row[0]
                     competence = float(row[1])
                     willingness = float(row[2])
-                    trustBeliefs[name] = {'competence': competence, 'willingness': willingness}
+                    confidence = float(row[3])
+                    trustBeliefs[name] = {'competence': competence, 'willingness': willingness, 'confidence': confidence}
                 # Initialize default trust values
                 if row and row[0]!=self._humanName:
                     competence = 1 #Assume that the human starts with the highest comeptance values according to the report.
                     willingness = default
-                    trustBeliefs[self._humanName] = {'competence': competence, 'willingness': willingness}
+                    confidence = 0
+                    trustBeliefs[self._humanName] = {'competence': competence, 'willingness': willingness, 'confidence': confidence}
         return trustBeliefs
 
 
@@ -880,12 +883,14 @@ class BaselineAgent(ArtificialBrain):
         # In case the human lies about the position of a victim and the robot finds out
         for i in range(self._liesAboutVictimsPosition):
             trustBeliefs[self._humanName]['willingness'] -= 0.1
+            trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
             trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1, 1)
 
         for message in receivedMessages:
             #Base case from code example.
             if 'Collect' in message:
                 trustBeliefs[self._humanName]['competence'] += 0.10
+                trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
                 trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
 
             #Every time the human asks for help to remove something, you decrease the competence
@@ -897,6 +902,7 @@ class BaselineAgent(ArtificialBrain):
                     if "stones" in self._sendMessages[self._obstacle_is_rock[message][0]]: #If the robot finds out it a stone that they have to remove.
                         if self._obstacle_is_rock[message][1] != "close": #Check if the human was far from the robot when he asked for help.
                             trustBeliefs[self._humanName]['competence'] -= 0.10
+                            trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
                             trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
                 except:
                     continue
@@ -906,11 +912,8 @@ class BaselineAgent(ArtificialBrain):
                 if "mildly" in message:
                     if self._distanceHuman != "close": #If they are far away from each other, it is not advantageous time wise to ask for help.
                         trustBeliefs[self._humanName]['competence'] -= 0.10
+                        trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
                         trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
-
-
-        print("Robot: ", self._sendMessages)
-        print("------")
 
         for sent_message in self._sendMessages:
 
@@ -921,6 +924,7 @@ class BaselineAgent(ArtificialBrain):
                 # increasing the willingness when the robot finds a victim thanks to what the human said
                 if 'because you told me' and ' was located here.' in sent_message:
                     trustBeliefs[self._humanName]['willingness'] += 0.10
+                    trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
                     trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'],
                                                                            -1, 1)
 
@@ -928,6 +932,7 @@ class BaselineAgent(ArtificialBrain):
             # Human says to robot "there is a x here" but robot doesnt find it.
             if "not present in" and "because I searched the whole area without finding" in sent_message:
                 trustBeliefs[self._humanName]['willingness'] -= 0.10
+                trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
                 trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1,1)
 
             # If human says there is an obstacle, then robot goes there. Two options:
@@ -950,8 +955,8 @@ class BaselineAgent(ArtificialBrain):
         # Save current trust belief values so we can later use and retrieve them to add to a csv file with all the logged trust belief values
         with open(folder + '/beliefs/currentTrustBelief.csv', mode='w') as csv_file:
             csv_writer = csv.writer(csv_file, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            csv_writer.writerow(['name','competence','willingness'])
-            csv_writer.writerow([self._humanName,trustBeliefs[self._humanName]['competence'],trustBeliefs[self._humanName]['willingness']])
+            csv_writer.writerow(['name','competence','willingness','confidence'])
+            csv_writer.writerow([self._humanName,trustBeliefs[self._humanName]['competence'],trustBeliefs[self._humanName]['willingness'], trustBeliefs[self._humanName]['confidence']])
 
         return trustBeliefs
 
