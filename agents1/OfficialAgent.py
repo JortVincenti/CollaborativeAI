@@ -76,6 +76,7 @@ class BaselineAgent(ArtificialBrain):
         self._message_with_time = {}
         self._obstacle_is_rock = {}
         self._confidence_increment = 0.01 # Confidence levels are between [0,1]
+        self.willingness_streak = 0
 
     def initialize(self):
         # Initialization of the state tracker and navigation algorithm
@@ -876,18 +877,11 @@ class BaselineAgent(ArtificialBrain):
         '''
         Baseline implementation of a trust belief. Creates a dictionary with trust belief scores for each team member, for example based on the received messages.
         '''
-
-        willingness_streak = 1
-        if (self._trustValues[0] != -3):
-            if (sorted(self._trustValues) == self._trustValues):
-                willingness_streak = 1.5
-            if (sorted(self._trustValues, reverse=True) == self._trustValues):
-                willingness_streak = 1.5
-
+        willingness_streak = 0
         # In case the human lies about the position of a victim and the robot finds out
         for i in range(self._liesAboutVictimsPosition):
-            print("W decreased by 0.1 (+ streak) because the human lied about the position of a midly injured victim.")
-            trustBeliefs[self._humanName]['willingness'] -= 0.1*willingness_streak
+            print("W decreased by 0.1 (+ streak) because the human lied about the position of a mildly injured victim.")
+            trustBeliefs[self._humanName]['willingness'] -= 0.1
             trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
 
         for message in receivedMessages:
@@ -923,15 +917,15 @@ class BaselineAgent(ArtificialBrain):
                 #trustBeliefs = self.robot_finds_victim_in_searched_area(trustBeliefs, sent_message)
                 # increasing the willingness when the robot finds a victim thanks to what the human said
                 if 'because you told me' and ' was located here.' in sent_message:
-                    print("W increased by 0.1 (+ streak) because the human gave the correct location of a victim")
-                    trustBeliefs[self._humanName]['willingness'] += 0.10*willingness_streak
+                    print("W increased by 0.1 (+ streak) because the human gave the correct location of a highly injured victim")
+                    trustBeliefs[self._humanName]['willingness'] += 0.1
                     trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
 
 
-            # Human says to robot "there is a x here" but robot doesnt find it.
+            # Human says to robot "there is a victim here" but robot doesnt find it.
             if "not present in" and "because I searched the whole area without finding" in sent_message:
                 print("W decreased by 0.1 (+ streak) because the human lied about the position of a high injured victim.")
-                trustBeliefs[self._humanName]['willingness'] -= 0.10*willingness_streak
+                trustBeliefs[self._humanName]['willingness'] -= 0.1
                 trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
 
             # If human says there is an obstacle, then robot goes there. Two options:
@@ -950,6 +944,29 @@ class BaselineAgent(ArtificialBrain):
             if "Found" and "Please decide whether to" and "or \"Continue\" searching" in sent_message:
                 trustBeliefs = self.long_to_answer(trustBeliefs, self._sendMessages.index(sent_message), willingness_streak)
 
+
+
+        if (self._trustValues[-1] != (trustBeliefs[self._humanName]['willingness']+ self.willingness_streak)):
+
+            self._trustValues[0] = self._trustValues[1]
+            self._trustValues[1] = self._trustValues[2]
+            self._trustValues[2] = trustBeliefs[self._humanName]['willingness']
+
+            # increase the added willingness in case the last three values are also increasing
+            if (self._trustValues[0] != -3):
+                if (sorted(self._trustValues) == self._trustValues):
+                    self.willingness_streak += 0.05
+                if (sorted(self._trustValues, reverse=True) == self._trustValues):
+                    self.willingness_streak -= 0.05
+            print("Streak value is", self.willingness_streak)
+
+            self._trustValues[2] = trustBeliefs[self._humanName]['willingness'] + self.willingness_streak
+
+
+
+        trustBeliefs[self._humanName]['willingness'] += self.willingness_streak
+
+
         trustBeliefs[self._humanName]['confidence'] = np.clip(trustBeliefs[self._humanName]['confidence'], 0, 1)
         trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1, 1)
         trustBeliefs[self._humanName]['competence'] = np.clip(trustBeliefs[self._humanName]['competence'], -1, 1)
@@ -961,12 +978,10 @@ class BaselineAgent(ArtificialBrain):
             csv_writer.writerow([self._humanName,trustBeliefs[self._humanName]['competence'],trustBeliefs[self._humanName]['willingness'], trustBeliefs[self._humanName]['confidence']])
 
         # store the value if something has changed
-        if (self._trustValues[-1] != trustBeliefs[self._humanName]['willingness']):
-            self._trustValues[0] = self._trustValues[1]
-            self._trustValues[1] = self._trustValues[2]
-            self._trustValues[2] = trustBeliefs[self._humanName]['willingness']
+
 
         print(self._trustValues)
+        print(trustBeliefs[self._humanName]['willingness'])
         return trustBeliefs
 
     # If robot says there is an obstacle, the human can either:
@@ -1019,7 +1034,7 @@ class BaselineAgent(ArtificialBrain):
         areas_searched_previously = re.findall('\d+', areas_searched_previously) #Take only the numbers
 
         if area_victim_found in areas_searched_previously:
-            trustBeliefs[self._humanName]['willingness'] -= 0.10*willingness_streak
+            trustBeliefs[self._humanName]['willingness'] -= (0.1)
             trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1, 1)
 
         return trustBeliefs
@@ -1027,7 +1042,8 @@ class BaselineAgent(ArtificialBrain):
     def correct_response_human(self, trustBeliefs, messages,index, willingness_streak):
         try: #try and catch because if the next message is not sent the application will crash.
             if "Moving to area" and "to help you" in messages[index+1]:
-                trustBeliefs[self._humanName]['willingness'] -= 0.05*willingness_streak #If the human ignores the robot and asks something else then decrease.
+                #print("W decreased by 0.05 because the human ignored the robot")
+                trustBeliefs[self._humanName]['willingness'] -= (0.0) #If the human ignores the robot and asks something else then decrease.
                 return trustBeliefs
             else:
                 return trustBeliefs
@@ -1047,24 +1063,24 @@ class BaselineAgent(ArtificialBrain):
             if "Lets remove" and "blocking area" in (self._sendMessages[index+1] or self._sendMessages[index+2]):
                 # then add 0.1
                 print("W increased by 0.1 (+ streak) because the human did not lie about the position of an obstacle.")
-                trustBeliefs[self._humanName]['willingness'] += 0.10*willingness_streak
+                trustBeliefs[self._humanName]['willingness'] += (0.1)
                 trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1,1)
                 return trustBeliefs
             elif "Removing" and "because you asked me to." in (self._sendMessages[index+1] or self._sendMessages[index+2]):
                 # then add 0.1
                 print("W increased by 0.1 (+ streak) because the human did not lie about the position of an obstacle.")
-                trustBeliefs[self._humanName]['willingness'] += (0.10*willingness_streak)
+                trustBeliefs[self._humanName]['willingness'] += (0.1)
                 trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1,1)
                 return trustBeliefs
             elif "Please come to" in (self._sendMessages[index+1] or self._sendMessages[index+2]):
                 print("W increased by 0.1 (+ streak) because the human did not lie about the position of an obstacle.")
-                trustBeliefs[self._humanName]['willingness'] += 0.1*willingness_streak
+                trustBeliefs[self._humanName]['willingness'] += (0.1)
                 trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1,1)
                 return trustBeliefs
             else:
                 # if not the human lied about the obstacle.
-                print("W decreased by 0.1 (+ streak) because the human not lied about the position of an obstacle.")
-                trustBeliefs[self._humanName]['willingness'] -= 0.10*willingness_streak
+                print("W decreased by 0.1 (+ streak) because the human lied about the position of an obstacle.")
+                trustBeliefs[self._humanName]['willingness'] -= (0.1)
                 trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1,1)
                 return trustBeliefs
 
@@ -1083,8 +1099,8 @@ class BaselineAgent(ArtificialBrain):
                 self._message_with_time[index+1] = time.time()
 
             if self._message_with_time[index+1] - self._message_with_time[index] > 15: #If the human takes more then 15 seconds to answer (Its not 15 but with lag).
-                print("W increased by 0.0.5 (+ streak) because the human took too long to answer.")
-                trustBeliefs[self._humanName]['willingness'] -= (0.05*willingness_streak)
+                print("W decreased by 0.5 (+ streak) because the human took too long to answer.")
+                trustBeliefs[self._humanName]['willingness'] -= (0.05)
                 trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1, 1)
 
             return trustBeliefs
