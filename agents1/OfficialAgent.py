@@ -74,6 +74,8 @@ class BaselineAgent(ArtificialBrain):
         self._moving = False
         self._message_with_time = {}
         self._obstacle_is_rock = {}
+        self._robot_at_drop_zone = False
+        self._punishment_for_lying = 0
 
     def initialize(self):
         # Initialization of the state tracker and navigation algorithm
@@ -105,7 +107,7 @@ class BaselineAgent(ArtificialBrain):
                     self._receivedMessages.append(mssg.content)
         # Initialize and update trust beliefs for team members
         trustBeliefs = self._loadBelief(self._teamMembers, self._folder)
-        trustBeliefs = self._trustBelief(self._teamMembers, trustBeliefs, self._folder, self._receivedMessages)
+        trustBeliefs = self._trustBelief(self._teamMembers, trustBeliefs, self._folder, self._receivedMessages, state)
 
         # Process messages from team members
         self._processMessages(state, self._teamMembers, self._condition, trustBeliefs)
@@ -142,6 +144,7 @@ class BaselineAgent(ArtificialBrain):
                 self._carryingTogether = False
         # If carrying a victim together, let agent be idle (because joint actions are essentially carried out by the human)
         if self._carryingTogether == True:
+            self._robot_at_drop_zone = True #If they are carrying together and we assume the human always transports at the drop zone, then we can assume the robot is as drop zone.
             return None, {}
 
         # Send the hidden score message for displaying and logging the score during the task, DO NOT REMOVE THIS
@@ -718,6 +721,7 @@ class BaselineAgent(ArtificialBrain):
                 self._tick = state['World']['nr_ticks']
                 self._carrying = False
                 # Drop the victim on the correct location on the drop zone
+                self._robot_at_drop_zone = True  # This new line is to check when the robot is at the dropzone, to then peak on who has been saved or not.
                 return Drop.__name__, {'human_name': self._humanName}
 
     def _getDropZones(self, state):
@@ -867,7 +871,7 @@ class BaselineAgent(ArtificialBrain):
         return trustBeliefs
 
 
-    def _trustBelief(self, members, trustBeliefs, folder, receivedMessages):
+    def _trustBelief(self, members, trustBeliefs, folder, receivedMessages, state):
         '''
         Baseline implementation of a trust belief. Creates a dictionary with trust belief scores for each team member, for example based on the received messages.
         '''
@@ -876,6 +880,7 @@ class BaselineAgent(ArtificialBrain):
         print("Human", receivedMessages)
         print("------")
 
+        self.check_if_human_rescued_victim(trustBeliefs, state)
 
         # In case the human lies about the position of a victim and the robot finds out
         for i in range(self._liesAboutVictimsPosition):
@@ -953,6 +958,56 @@ class BaselineAgent(ArtificialBrain):
             csv_writer.writerow(['name','competence','willingness'])
             csv_writer.writerow([self._humanName,trustBeliefs[self._humanName]['competence'],trustBeliefs[self._humanName]['willingness']])
 
+        return trustBeliefs
+
+
+    def check_if_human_rescued_victim(self, trustBeliefs, state):
+        if self._robot_at_drop_zone == True:
+            # Definition of some relevant variables
+
+            saved_victims_for_sure = []
+            all_vics_in_order = []
+
+            zones = self._getDropZones(state)
+            # Identification of which victims still need to be rescued and on which location they should be dropped
+            for info in zones:
+                if str(info['img_name'])[8:-4]:
+                    all_vics_in_order.append(str(info['img_name'])[8:-4])
+
+            # Identification of which victims still need to be rescued and on which location they should be dropped
+            for info in state.values():
+
+                if 'class_inheritance' in info:
+                    if 'CollectableBlock' in info['class_inheritance']:
+                        saved_victims_for_sure.append((str(info['img_name'])[8:-4]))
+
+            last_rescued_victim = self._collectedVictims[len(self._collectedVictims)-1] #Last person rescued.
+            index_of_rescued_victim = all_vics_in_order.index(last_rescued_victim) #Get the index.
+
+            try: #In case index out of bounds
+                person_before_drop_zone = all_vics_in_order[index_of_rescued_victim-1]
+
+                if person_before_drop_zone in self._collectedVictims:
+                    if not person_before_drop_zone in saved_victims_for_sure:
+                        self._collectedVictims.remove(person_before_drop_zone)
+                        self._punishment_for_lying -= 0.10
+            except:
+                pass
+            try: #In case index out of bounds
+                person_after_drop_zone = all_vics_in_order[index_of_rescued_victim+1] #Get the person after in the dropzone
+
+                if person_after_drop_zone in self._collectedVictims: #If that person has been "saved"
+                    if not person_after_drop_zone in saved_victims_for_sure: #but the robot cannot see it
+                        self._collectedVictims.remove(person_after_drop_zone) #Revmoe that person from collected victims
+                        self._punishment_for_lying -= 0.10 #The human lied for sure
+            except:
+                pass
+
+            self._robot_at_drop_zone = False
+
+
+        trustBeliefs[self._humanName]['willingness'] -= self._punishment_for_lying
+        trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1, 1)
         return trustBeliefs
 
     # If robot says there is an obstacle, the human can either:
