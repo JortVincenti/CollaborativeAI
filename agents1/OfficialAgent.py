@@ -510,6 +510,27 @@ class BaselineAgent(ArtificialBrain):
                             if vic not in self._roomVics:
                                 self._roomVics.append(vic)
 
+                            if vic in self._foundVictims and vic in self._collectedVictims:
+                                self._collectedVictims.remove(vic)
+
+                                # Communicate which victim the agent found and ask the human whether to rescue the victim now or at a later stage
+                                if 'mild' in vic and self._answered == False and not self._waiting:
+                                    self._sendMessage('Found ' + vic + ' in ' + self._door['room_name'] + '. Please decide whether to "Rescue together", "Rescue alone", or "Continue" searching. \n \n \
+                                           Important features to consider are: \n safe - victims rescued: ' + str(
+                                        self._collectedVictims) + '\n explore - areas searched: area ' + str(
+                                        self._searchedRooms).replace('area ', '') + '\n \
+                                           clock - extra time when rescuing alone: 15 seconds \n afstand - distance between us: ' + self._distanceHuman,
+                                                      'RescueBot')
+                                    self._waiting = True
+
+                                if 'critical' in vic and self._answered == False and not self._waiting:
+                                    self._sendMessage('Found ' + vic + ' in ' + self._door['room_name'] + '. Please decide whether to "Rescue" or "Continue" searching. \n\n \
+                                           Important features to consider are: \n explore - areas searched: area ' + str(
+                                        self._searchedRooms).replace('area', '') + ' \n safe - victims rescued: ' + str(
+                                        self._collectedVictims) + '\n \
+                                           afstand - distance between us: ' + self._distanceHuman, 'RescueBot')
+                                    self._waiting = True
+
                             if vic in self._foundVictims and not (self._foundVictimLocs[vic]['room'] == (self._door['room_name'])):
                                 print('said by human', self._foundVictimLocs[vic]['room'])
                                 print('actual location', self._door['room_name'])
@@ -934,6 +955,21 @@ class BaselineAgent(ArtificialBrain):
                     print("W increased by 0.1 (+ streak) because the human gave the correct location of a highly injured victim")
                     trustBeliefs[self._humanName]['willingness'] += 0.1
                     trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
+
+                try:
+                    name_victim = sent_message.split("Found ")[1].split(" in area ")[0]
+                    print(name_victim)
+                    print(self._collectedVictims)
+                    if (name_victim in self._collectedVictims):
+
+                        self._collectedVictims.remove(name_victim)
+                        print(self._trustValues)
+                        trustBeliefs[self._humanName]['willingness'] -= 0.1
+                        trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
+                        trustBeliefs[self._humanName]['competence'] += 0.15
+                        trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
+                except:
+                    continue
 
 
             # Human says to robot "there is a victim here" but robot doesnt find it.
