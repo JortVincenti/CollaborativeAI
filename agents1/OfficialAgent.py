@@ -1082,7 +1082,10 @@ class BaselineAgent(ArtificialBrain):
 
     def correct_response_human(self, trustBeliefs, received_messages):
         for index_received_messages in self.index_messages.values():
-            try: next_message = received_messages[index_received_messages] #try and catch because if the next message is not sent the application will crash.
+            try:
+                next_message = received_messages[index_received_messages] #try and catch because if the next message is not sent the application will crash.
+                #It might happen that the agent sends a message right after the robot asked something, so we ignore if that happens.
+                next_next_message = received_messages[index_received_messages + 1] #try and catch because if the next message is not sent the application will crash.
             except:
                 return trustBeliefs #The  human hasnt answered yet so return the trust beliefs.
             #Cases for Objects
@@ -1090,6 +1093,12 @@ class BaselineAgent(ArtificialBrain):
                 continue
             #Cases for Victims
             elif "Rescue together" == next_message or "Rescue alone" == next_message or "Rescue" == next_message:
+                continue
+
+            elif "Rescue together" == next_next_message or "Rescue alone" == next_next_message or "Rescue" == next_next_message:
+                continue
+
+            elif "Remove together" == next_next_message or "Remove alone" == next_next_message or "Remove" == next_next_message or "Continue" == next_next_message:
                 continue
 
             #Else the human ignored the message.
