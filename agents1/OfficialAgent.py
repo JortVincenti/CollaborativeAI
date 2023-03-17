@@ -144,7 +144,6 @@ class BaselineAgent(ArtificialBrain):
                 self._carryingTogether = False
         # If carrying a victim together, let agent be idle (because joint actions are essentially carried out by the human)
         if self._carryingTogether == True:
-            self._robot_at_drop_zone = True #If they are carrying together and we assume the human always transports at the drop zone, then we can assume the robot is as drop zone.
             return None, {}
 
         # Send the hidden score message for displaying and logging the score during the task, DO NOT REMOVE THIS
@@ -958,6 +957,7 @@ class BaselineAgent(ArtificialBrain):
             csv_writer.writerow(['name','competence','willingness'])
             csv_writer.writerow([self._humanName,trustBeliefs[self._humanName]['competence'],trustBeliefs[self._humanName]['willingness']])
 
+        print(trustBeliefs)
         return trustBeliefs
 
 
@@ -1005,8 +1005,7 @@ class BaselineAgent(ArtificialBrain):
 
             self._robot_at_drop_zone = False
 
-
-        trustBeliefs[self._humanName]['willingness'] -= self._punishment_for_lying
+        trustBeliefs[self._humanName]['willingness'] += self._punishment_for_lying
         trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1, 1)
         return trustBeliefs
 
