@@ -1036,7 +1036,8 @@ class BaselineAgent(ArtificialBrain):
 
             self._robot_at_drop_zone = False
 
-        trustBeliefs[self._humanName]['willingness'] += self._punishment_for_lying
+        trustBeliefs[self._humanName]['willingness'] += self._punishment_for_lying #The human lied about the fact that he dropeed a victim
+        trustBeliefs[self._humanName]['competence'] += self._punishment_for_lying #The human competence is also decreased since didnt carry the victim.
         trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1, 1)
         return trustBeliefs
 
@@ -1051,8 +1052,8 @@ class BaselineAgent(ArtificialBrain):
     #     if area_victim_found in areas_searched_previously:
     #         trustBeliefs[self._humanName]['willingness'] -= (0.1)
     #         trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1, 1)
-
-        return trustBeliefs
+    #
+    #    return trustBeliefs
 
     def correct_response_human(self, trustBeliefs, received_messages):
         for index_received_messages in self.index_messages.values():
