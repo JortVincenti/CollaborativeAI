@@ -811,7 +811,7 @@ class BaselineAgent(ArtificialBrain):
                     area = 'area ' + msg.split()[-1]
                     # Calculate the cost with inverted willingness, because we want the cost to be high if the human is lying in this scenario
                     cost = self._distance_cost(state, area, -willingness)
-                    threshold = max(3 * (-competence + 1) / 2, 0.5) # Threshold is at least
+                    threshold = max(10 * (-competence + 1) / 2, 3)
                     if (cost < threshold) ^ (random.random() > confidence):
                         if not self._carrying:
                             # Identify at which location the human needs help
