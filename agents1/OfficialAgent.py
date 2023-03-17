@@ -83,6 +83,7 @@ class BaselineAgent(ArtificialBrain):
         self.index_messages = {}
         self.list_of_wiligness = [(0, 0)] #Init Willigness value, Init tick.
         self.list_of_competance = [(0, 0)] #Init Competance value, init tick.
+        self.list_of_confidence = [(0, 0)] #Init confidence value, init tick.
         self.ticks = 0 # To get the ticks.
 
     def initialize(self):
@@ -989,21 +990,25 @@ class BaselineAgent(ArtificialBrain):
             csv_writer.writerow(['name','competence','willingness','confidence'])
             csv_writer.writerow([self._humanName,trustBeliefs[self._humanName]['competence'],trustBeliefs[self._humanName]['willingness'], trustBeliefs[self._humanName]['confidence']])
 
+
+
         if not self.list_of_wiligness[-1][0] == trustBeliefs[self._humanName]['willingness']:
             tuple = (trustBeliefs[self._humanName]['willingness'], self.ticks)
             self.list_of_wiligness.append(tuple)
-
 
         if not self.list_of_competance[-1][0] == trustBeliefs[self._humanName]['competence']:
             tuple = (trustBeliefs[self._humanName]['competence'], self.ticks)
             self.list_of_competance.append(tuple)
 
-        # Save current trust belief values so we can later use and retrieve them to add to a csv file with all the logged trust belief values
+        if not self.list_of_confidence[-1][0] == trustBeliefs[self._humanName]['confidence']:
+            tuple = (trustBeliefs[self._humanName]['confidence'], self.ticks)
+            self.list_of_confidence.append(tuple)
+
+            # Save current trust belief values so we can later use and retrieve them to add to a csv file with all the logged trust belief values
         with open(folder + '/beliefs/rounds_trustValues.csv', mode='w') as csv_file:
             csv_writer = csv.writer(csv_file, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            csv_writer.writerow(['name','competence','willingness'])
-            csv_writer.writerow([self._humanName,self.list_of_competance, self.list_of_wiligness])
-
+            csv_writer.writerow(['name','competence','willingness', 'confidence'])
+            csv_writer.writerow([self._humanName,self.list_of_competance, self.list_of_wiligness, self.list_of_confidence])
 
 
         self.ticks += 1 #For every action increasr the tick.
