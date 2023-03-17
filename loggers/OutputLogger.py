@@ -4,6 +4,7 @@ import csv
 import glob
 import pathlib
 
+
 def output_logger(fld):
     recent_dir = max(glob.glob(os.path.join(fld, '*/')), key=os.path.getmtime)
     recent_dir = max(glob.glob(os.path.join(recent_dir, '*/')), key=os.path.getmtime)
