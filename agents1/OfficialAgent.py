@@ -79,6 +79,7 @@ class BaselineAgent(ArtificialBrain):
         self.willingness_streak = 0
         self._robot_at_drop_zone = False
         self._punishment_for_lying = 0
+        self._punishment_competance_not_carrying = 0
         self.index_messages = {}
 
     def initialize(self):
@@ -851,7 +852,7 @@ class BaselineAgent(ArtificialBrain):
         # Create a dictionary with trust values for all team members
         trustBeliefs = {}
         # Set a default starting trust value
-        default = 0.5
+        default = 0
         trustfile_header = []
         trustfile_contents = []
         # Check if agent already collaborated with this human before, if yes: load the corresponding trust values, if no: initialize using default trust values
@@ -896,10 +897,10 @@ class BaselineAgent(ArtificialBrain):
         for message in receivedMessages:
             #Base case from code example.
             if 'Collect' in message:
-                trustBeliefs[self._humanName]['competence'] += 0.10
+                trustBeliefs[self._humanName]['competence'] += 0.15
                 trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
 
-            #Every time the human asks for help to remove something, you decrease the competence
+            #Every time the human asks for help to remove a small obstacle, you decrease the competence
             if "Remove: at" in message:
                 if message not in self._obstacle_is_rock:
                     self._obstacle_is_rock[message] = (len(self._sendMessages), self._distanceHuman)
@@ -913,7 +914,7 @@ class BaselineAgent(ArtificialBrain):
 
             # Every time the human asks for help to rescue a victim, you decrease the competence
             if "Found: " in message:
-                if "mildly" in message:
+                if "mildly" in message: #That victim should be mildly injured
                     if self._distanceHuman != "close": #If they are far away from each other, it is not advantageous time wise to ask for help.
                         trustBeliefs[self._humanName]['competence'] -= 0.10
                         trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
@@ -973,10 +974,7 @@ class BaselineAgent(ArtificialBrain):
 
             self._trustValues[2] = trustBeliefs[self._humanName]['willingness'] + self.willingness_streak
 
-
-
         trustBeliefs[self._humanName]['willingness'] += self.willingness_streak
-
 
         trustBeliefs[self._humanName]['confidence'] = np.clip(trustBeliefs[self._humanName]['confidence'], 0, 1)
         trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1, 1)
@@ -1022,6 +1020,7 @@ class BaselineAgent(ArtificialBrain):
                     if not person_before_drop_zone in saved_victims_for_sure:
                         self._collectedVictims.remove(person_before_drop_zone)
                         self._punishment_for_lying -= 0.10
+                        self._punishment_competance_not_carrying -= 0.15
             except:
                 pass
             try: #In case index out of bounds
@@ -1031,13 +1030,14 @@ class BaselineAgent(ArtificialBrain):
                     if not person_after_drop_zone in saved_victims_for_sure: #but the robot cannot see it
                         self._collectedVictims.remove(person_after_drop_zone) #Revmoe that person from collected victims
                         self._punishment_for_lying -= 0.10 #The human lied for sure
+                        self._punishment_competance_not_carrying -= 0.15 #THe human also didnt carry the victim so remove the assumption about his competance
             except:
                 pass
 
             self._robot_at_drop_zone = False
 
         trustBeliefs[self._humanName]['willingness'] += self._punishment_for_lying #The human lied about the fact that he dropeed a victim
-        trustBeliefs[self._humanName]['competence'] += self._punishment_for_lying #The human competence is also decreased since didnt carry the victim.
+        trustBeliefs[self._humanName]['competence'] += self._punishment_competance_not_carrying #The human competence is also decreased since didnt carry the victim.
         trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1, 1)
         return trustBeliefs
 
