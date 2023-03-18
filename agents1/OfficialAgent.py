@@ -957,17 +957,20 @@ class BaselineAgent(ArtificialBrain):
                     trustBeliefs[self._humanName]['willingness'] += 0.1
                     trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
 
+                try:
                     name_victim = sent_message.split("Found ")[1].split(" in area ")[0]
                     print(name_victim)
                     print(self._collectedVictims)
                     if (name_victim in self._collectedVictims):
-
+                        print("W and C decreased by 0.1 and 0.15 because the human lied about saving a mildly injured victim.")
                         self._collectedVictims.remove(name_victim)
                         print(self._trustValues)
                         trustBeliefs[self._humanName]['willingness'] -= 0.1
                         trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
-                        trustBeliefs[self._humanName]['competence'] += 0.15
+                        trustBeliefs[self._humanName]['competence'] -= 0.15
                         trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
+                except:
+                    pass
 
 
             # Human says to robot "there is a victim here" but robot doesnt find it.
@@ -1046,6 +1049,8 @@ class BaselineAgent(ArtificialBrain):
 
 
         self.ticks += 1 #For every action increasr the tick.
+        print("C:", trustBeliefs[self._humanName]['competence'])
+        print("w:", trustBeliefs[self._humanName]['willingness'])
         return trustBeliefs
 
 
