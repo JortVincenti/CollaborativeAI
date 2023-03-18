@@ -42,6 +42,7 @@ class BaselineAgent(ArtificialBrain):
         super().__init__(slowdown, condition, name, folder)
         # Initialization of some relevant variables
         self._liesAboutVictimsPosition = 0
+        self._liesAboutVictimsCollection = 0
         self._trustValues = [-3, -3, -3]
         self._slowdown = slowdown
         self._condition = condition
@@ -515,6 +516,7 @@ class BaselineAgent(ArtificialBrain):
 
                             if vic in self._foundVictims and vic in self._collectedVictims:
                                 self._collectedVictims.remove(vic)
+                                self._liesAboutVictimsCollection += 1
 
                                 # Communicate which victim the agent found and ask the human whether to rescue the victim now or at a later stage
                                 if 'mild' in vic and self._answered == False and not self._waiting:
@@ -923,9 +925,18 @@ class BaselineAgent(ArtificialBrain):
             trustBeliefs[self._humanName]['willingness'] -= 0.1
             trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
 
+        # In case the human lies about the collecting a victim and the robot finds out
+        for i in range(self._liesAboutVictimsCollection):
+            print("W and C decreased by 0.1 and 0.15 because the human lied about saving a mildly injured victim.")
+            trustBeliefs[self._humanName]['willingness'] -= 0.1
+            trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
+            trustBeliefs[self._humanName]['competence'] -= 0.15
+            trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
+
         for message in receivedMessages:
             #Base case from code example.
             if 'Collect' in message:
+                print("C increased by 0.15 cus the human saved a victim alone.")
                 trustBeliefs[self._humanName]['competence'] += 0.15
                 trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
 
@@ -936,17 +947,12 @@ class BaselineAgent(ArtificialBrain):
                 try:
                     if "stones" in self._sendMessages[self._obstacle_is_rock[message][0]]: #If the robot finds out it a stone that they have to remove.
                         if self._obstacle_is_rock[message][1] != "close": #Check if the human was far from the robot when he asked for help.
+                            print("C decreased by 0.1 cus the human asked for help to remove stones.")
                             trustBeliefs[self._humanName]['competence'] -= 0.10
                             trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
                 except:
                     continue
 
-            # Every time the human asks for help to rescue a victim, you decrease the competence
-            if "Found: " in message:
-                if "mildly" in message: #That victim should be mildly injured
-                    if self._distanceHuman != "close": #If they are far away from each other, it is not advantageous time wise to ask for help.
-                        trustBeliefs[self._humanName]['competence'] -= 0.10
-                        trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
 
         for sent_message in self._sendMessages:
 
@@ -959,21 +965,8 @@ class BaselineAgent(ArtificialBrain):
                     print("W increased by 0.1 (+ streak) because the human gave the correct location of a highly injured victim")
                     trustBeliefs[self._humanName]['willingness'] += 0.1
                     trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
+                    #name_victim = sent_message.split("Found ")[1].split(" in area ")[0]
 
-                try:
-                    name_victim = sent_message.split("Found ")[1].split(" in area ")[0]
-                    print(name_victim)
-                    print(self._collectedVictims)
-                    if (name_victim in self._collectedVictims):
-                        print("W and C decreased by 0.1 and 0.15 because the human lied about saving a mildly injured victim.")
-                        #self._collectedVictims.remove(name_victim)
-                        print(self._trustValues)
-                        trustBeliefs[self._humanName]['willingness'] -= 0.1
-                        trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
-                        trustBeliefs[self._humanName]['competence'] -= 0.15
-                        trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
-                except:
-                    pass
 
 
             # Human says to robot "there is a victim here" but robot doesnt find it.
@@ -1086,6 +1079,7 @@ class BaselineAgent(ArtificialBrain):
                 if person_before_drop_zone in self._collectedVictims:
                     if not person_before_drop_zone in saved_victims_for_sure:
                         self._collectedVictims.remove(person_before_drop_zone)
+                        print("W decreased cus the robot found out at the drop zone that the human didn't save someone as he said")
                         self._punishment_for_lying -= 0.10
                         self._punishment_competance_not_carrying -= 0.15
             except:
@@ -1096,6 +1090,7 @@ class BaselineAgent(ArtificialBrain):
                 if person_after_drop_zone in self._collectedVictims: #If that person has been "saved"
                     if not person_after_drop_zone in saved_victims_for_sure: #but the robot cannot see it
                         self._collectedVictims.remove(person_after_drop_zone) #Revmoe that person from collected victims
+                        print("W decreased cus the robot found out at the drop zone that the human didn't save someone as he said")
                         self._punishment_for_lying -= 0.10 #The human lied for sure
                         self._punishment_competance_not_carrying -= 0.15 #THe human also didnt carry the victim so remove the assumption about his competance
             except:
