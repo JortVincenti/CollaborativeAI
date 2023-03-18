@@ -85,6 +85,7 @@ class BaselineAgent(ArtificialBrain):
         self.list_of_competance = [(0, 0)] #Init Competance value, init tick.
         self.list_of_confidence = [(0, 0)] #Init confidence value, init tick.
         self.ticks = 0 # To get the ticks.
+        self._flag = False
 
     def initialize(self):
         # Initialization of the state tracker and navigation algorithm
@@ -200,7 +201,7 @@ class BaselineAgent(ArtificialBrain):
                 # Check which victims can be rescued next because human or agent already found them             
                 for vic in remainingVics:
                     # Define a previously found victim as target victim because all areas have been searched
-                    if vic in self._foundVictims and vic in self._todo and len(self._searchedRooms)==0:
+                    if vic in self._foundVictims and vic in self._todo and self._flag == True: # changed len(self._searchedRooms)==0 to flag
                         self._goalVic = vic
                         self._goalLoc = remaining[vic]
                         # Move to target victim
@@ -253,6 +254,7 @@ class BaselineAgent(ArtificialBrain):
                              and room['room_name'] in self._searchedRooms
                              and room['room_name'] not in self._tosearch
                              and self._searchedRooms[room['room_name']] != 1]
+                    self._flag = True # Set the flag to true, marking the robot in a re-search phase
                     #self._tosearch = []
                     #self._sendMessages = []
                     #self.received_messages = []
@@ -814,7 +816,8 @@ class BaselineAgent(ArtificialBrain):
                         self._rescue = 'together'
                     # Add the found victim to the to do list when the human's condition is not 'weak'
                     if 'mild' in foundVic and condition!='weak':
-                        self._todo.append(foundVic)
+                        if foundVic not in self._todo:
+                            self._todo.append(foundVic)
                 # If a received message involves team members rescuing victims, add these victims and their locations to memory
                 if msg.startswith('Collect:'):
                     # Identify which victim and area it concerns
