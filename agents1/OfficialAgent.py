@@ -1196,7 +1196,7 @@ class BaselineAgent(ArtificialBrain):
 
             if self._message_with_time[index+1] - self._message_with_time[index] > 15: #If the human takes more then 15 seconds to answer (Its not 15 but with lag).
                 print("W decreased by 0.05 (+ streak) because the human took too long to answer.")
-                trustBeliefs[self._humanName]['willingness'] -= (0.05)
+                trustBeliefs[self._humanName]['willingness'] -= (0.1)
                 trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1, 1)
 
             return trustBeliefs
