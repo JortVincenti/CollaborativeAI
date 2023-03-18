@@ -931,7 +931,7 @@ class BaselineAgent(ArtificialBrain):
             #Every time the human asks for help to remove a small obstacle, you decrease the competence
             if "Remove: at" in message:
                 if message not in self._obstacle_is_rock:
-                    self._obstacle_is_rock[message] = (len(self._sendMessages), self._distanceHuman)
+                    self._obstacle_is_rock[message] = (len(self._sendMessages)+1, self._distanceHuman)
                 try:
                     if "stones" in self._sendMessages[self._obstacle_is_rock[message][0]]: #If the robot finds out it a stone that they have to remove.
                         if self._obstacle_is_rock[message][1] != "close": #Check if the human was far from the robot when he asked for help.
