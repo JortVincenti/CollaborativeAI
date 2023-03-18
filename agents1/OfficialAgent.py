@@ -988,7 +988,7 @@ class BaselineAgent(ArtificialBrain):
             if "Found" in sent_message:
                 if not self._sendMessages.index(sent_message) in self.index_messages:
                     self.index_messages[self._sendMessages.index(sent_message)] = len(receivedMessages)
-                trustBeliefs = self.correct_response_human(trustBeliefs, receivedMessages)
+                #trustBeliefs = self.correct_response_human(trustBeliefs, receivedMessages)
 
             # Robot asks for help but the human takes too long to answer.
             # if "Found" and "Please decide whether to" in sent_message:
@@ -1125,6 +1125,8 @@ class BaselineAgent(ArtificialBrain):
                 next_message = received_messages[index_received_messages] #try and catch because if the next message is not sent the application will crash.
                 #It might happen that the agent sends a message right after the robot asked something, so we ignore if that happens.
                 next_next_message = received_messages[index_received_messages + 1] #try and catch because if the next message is not sent the application will crash.
+                print("-" +next_message + "-")
+                print("-"+ next_next_message + "-")
             except:
                 return trustBeliefs #The  human hasnt answered yet so return the trust beliefs.
             #Cases for Objects
@@ -1195,7 +1197,7 @@ class BaselineAgent(ArtificialBrain):
                 self._message_with_time[index+1] = time.time()
 
             if self._message_with_time[index+1] - self._message_with_time[index] > 15: #If the human takes more then 15 seconds to answer (Its not 15 but with lag).
-                print("W decreased by 0.5 (+ streak) because the human took too long to answer.")
+                print("W decreased by 0.05 (+ streak) because the human took too long to answer.")
                 trustBeliefs[self._humanName]['willingness'] -= (0.05)
                 trustBeliefs[self._humanName]['willingness'] = np.clip(trustBeliefs[self._humanName]['willingness'], -1, 1)
 
