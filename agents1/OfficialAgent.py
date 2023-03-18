@@ -939,7 +939,7 @@ class BaselineAgent(ArtificialBrain):
                     print(name_victim)
                     print(self._collectedVictims)
                     if (name_victim in self._collectedVictims):
-                        self._collectedVictims.remove(name_victim)
+                        #self._collectedVictims.remove(name_victim)
                         print(self._trustValues)
                         trustBeliefs[self._humanName]['willingness'] -= 0.1
                         trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
