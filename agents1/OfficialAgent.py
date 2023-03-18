@@ -966,7 +966,7 @@ class BaselineAgent(ArtificialBrain):
                     print(self._collectedVictims)
                     if (name_victim in self._collectedVictims):
                         print("W and C decreased by 0.1 and 0.15 because the human lied about saving a mildly injured victim.")
-                        self._collectedVictims.remove(name_victim)
+                        #self._collectedVictims.remove(name_victim)
                         print(self._trustValues)
                         trustBeliefs[self._humanName]['willingness'] -= 0.1
                         trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
