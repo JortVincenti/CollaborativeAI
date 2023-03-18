@@ -101,7 +101,7 @@ class BaselineAgent(ArtificialBrain):
         destLoc = state.get_room_doors(destination)[0]['location']
         distance = utils.get_distance(loc, destLoc)
         # Normalize willingness from [-1, 1] to [0, 1]
-        return (willingness + 1)/2 * distance
+        return ((1 - willingness)/2) * distance
 
     def decide_on_actions(self, state):
         # Identify team members
@@ -259,16 +259,17 @@ class BaselineAgent(ArtificialBrain):
                     #self.received_messages_content = []
                     self._phase = Phase.FIND_NEXT_GOAL
                     if len(rooms) > 0:
+                        # Prioritize rooms with claimed victims in them. Check the rooms with the
                         # Filter into list of prioritized rooms to check
                         victimLocations = [(v['room'], v['likelihood']) for v in self._foundVictimLocs.values() if v['likelihood'] != 1]
                         # Prioritize the claimed victim location rooms first, else continue without prioritized rooms
                         if len(victimLocations) > 0:
-                            sortedLocations = sorted(victimLocations, key=lambda x: self._distance_cost(state, x[0], x[1]))
+                            sortedLocations = sorted(victimLocations, key=lambda x: self._distance_cost(state, x[0], x[1]), reverse=True)
                             self._searchedRooms.pop(sortedLocations[0][0])
                         else:
-                            rooms = sorted(rooms, key=lambda x: self._distance_cost(state, x[0], x[1]))
-                            # Start considering the human searched rooms based on ascending likelihood
-                            # NEXT GOAL is the room with the smallest cost function
+                            rooms = sorted(rooms, key=lambda x: self._distance_cost(state, x[0], x[1]), reverse=True)
+                            # Start considering the human searched rooms based on descending cost function
+                            # NEXT GOAL is the room with the largest cost function.
                             self._searchedRooms.pop(rooms[0][0])
                     else:
                         self._searchedRooms = {}
@@ -644,8 +645,10 @@ class BaselineAgent(ArtificialBrain):
                     self._rescue = 'alone'
                     self._answered = True
                     self._waiting = False
+                    self._goalVic = self._recentVic
+                    self._goalLoc = self._remaining[self._goalVic]
                     self._recentVic = None
-                    self._phase = Phase.FIND_NEXT_GOAL
+                    self._phase = Phase.PLAN_PATH_TO_VICTIM
                 # Continue searching other areas if the human decides so
                 if self.received_messages_content and self.received_messages_content[-1] == 'Continue':
                     self._answered = True
@@ -842,8 +845,8 @@ class BaselineAgent(ArtificialBrain):
                     # Come over immediately when the agent is not carrying a victim
                     area = 'area ' + msg.split()[-1]
                     # Calculate the cost with inverted willingness, because we want the cost to be high if the human is lying in this scenario
-                    cost = self._distance_cost(state, area, -willingness)
-                    threshold = max(10 * (-competence + 1) / 2, 3)
+                    cost = self._distance_cost(state, area, willingness)
+                    threshold = max(5 * (-competence + 1) / 2, 1)
                     if (cost < threshold) ^ (random.random() > confidence):
                         if not self._carrying:
                             # Identify at which location the human needs help
@@ -956,7 +959,6 @@ class BaselineAgent(ArtificialBrain):
                     trustBeliefs[self._humanName]['willingness'] += 0.1
                     trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
 
-                try:
                     name_victim = sent_message.split("Found ")[1].split(" in area ")[0]
                     print(name_victim)
                     print(self._collectedVictims)
@@ -968,8 +970,6 @@ class BaselineAgent(ArtificialBrain):
                         trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
                         trustBeliefs[self._humanName]['competence'] += 0.15
                         trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
-                except:
-                    continue
 
 
             # Human says to robot "there is a victim here" but robot doesnt find it.
