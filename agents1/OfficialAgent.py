@@ -101,7 +101,7 @@ class BaselineAgent(ArtificialBrain):
         destLoc = state.get_room_doors(destination)[0]['location']
         distance = utils.get_distance(loc, destLoc)
         # Normalize willingness from [-1, 1] to [0, 1]
-        return (willingness + 1)/2 * distance
+        return ((1 - willingness)/2) * distance
 
     def decide_on_actions(self, state):
         # Identify team members
@@ -263,12 +263,12 @@ class BaselineAgent(ArtificialBrain):
                         victimLocations = [(v['room'], v['likelihood']) for v in self._foundVictimLocs.values() if v['likelihood'] != 1]
                         # Prioritize the claimed victim location rooms first, else continue without prioritized rooms
                         if len(victimLocations) > 0:
-                            sortedLocations = sorted(victimLocations, key=lambda x: self._distance_cost(state, x[0], x[1]))
+                            sortedLocations = sorted(victimLocations, key=lambda x: self._distance_cost(state, x[0], x[1]), reverse=True)
                             self._searchedRooms.pop(sortedLocations[0][0])
                         else:
-                            rooms = sorted(rooms, key=lambda x: self._distance_cost(state, x[0], x[1]))
-                            # Start considering the human searched rooms based on ascending likelihood
-                            # NEXT GOAL is the room with the smallest cost function
+                            rooms = sorted(rooms, key=lambda x: self._distance_cost(state, x[0], x[1]), reverse=True)
+                            # Start considering the human searched rooms based on descending cost function
+                            # NEXT GOAL is the room with the largest cost function
                             self._searchedRooms.pop(rooms[0][0])
                     else:
                         self._searchedRooms = {}
@@ -821,8 +821,8 @@ class BaselineAgent(ArtificialBrain):
                     # Come over immediately when the agent is not carrying a victim
                     area = 'area ' + msg.split()[-1]
                     # Calculate the cost with inverted willingness, because we want the cost to be high if the human is lying in this scenario
-                    cost = self._distance_cost(state, area, -willingness)
-                    threshold = max(10 * (-competence + 1) / 2, 3)
+                    cost = self._distance_cost(state, area, willingness)
+                    threshold = max(5 * (-competence + 1) / 2, 1)
                     if (cost < threshold) ^ (random.random() > confidence):
                         if not self._carrying:
                             # Identify at which location the human needs help
