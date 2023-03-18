@@ -86,6 +86,7 @@ class BaselineAgent(ArtificialBrain):
         self.list_of_confidence = [(0, 0)] #Init confidence value, init tick.
         self.ticks = 0 # To get the ticks.
         self._flag = False
+        self._unwilling = False
 
     def initialize(self):
         # Initialization of the state tracker and navigation algorithm
@@ -118,6 +119,13 @@ class BaselineAgent(ArtificialBrain):
         # Initialize and update trust beliefs for team members
         trustBeliefs = self._loadBelief(self._teamMembers, self._folder)
         trustBeliefs = self._trustBelief(self._teamMembers, trustBeliefs, self._folder, self._receivedMessages, state)
+
+        # Determine if the human is unwilling or not,
+        # this will impact the robot's decision to ask the human for help for some actions.
+        if trustBeliefs[self._humanName]['willingness'] < -0.5:
+            self._unwilling = True
+        else:
+            self._unwilling = False
 
         # Process messages from team members
         self._processMessages(state, self._teamMembers, self._condition, trustBeliefs)
@@ -392,10 +400,12 @@ class BaselineAgent(ArtificialBrain):
                         objects.append(info)
                         # Communicate which obstacle is blocking the entrance
                         if self._answered == False and not self._remove and not self._waiting:
-                            self._sendMessage('Found tree blocking  ' + str(self._door['room_name']) + '. Please decide whether to "Remove" or "Continue" searching. \n \n \
-                                Important features to consider are: \n safe - victims rescued: ' + str(self._collectedVictims) + '\n explore - areas searched: area ' + str(self._searchedRooms).replace('area ','') + ' \
-                                \n clock - removal time: 10 seconds','RescueBot')
-                            self._waiting = True
+                            if not self._unwilling: # Ask the human for their input if not unwilling
+                                self._sendMessage('Found tree blocking  ' + str(self._door['room_name']) + '. Please decide whether to "Remove" or "Continue" searching. \n \n \
+                                    Important features to consider are: \n safe - victims rescued: ' + str(self._collectedVictims) + '\n explore - areas searched: area ' + str(self._searchedRooms).replace('area ','') + ' \
+                                    \n clock - removal time: 10 seconds','RescueBot')
+                                self._waiting = True
+                            else: self._answered = True # Otherwise, refrain from asking the human for input TODO: needed?
                         # Determine the next area to explore if the human tells the agent not to remove the obstacle
                         if self.received_messages_content and self.received_messages_content[-1] == 'Continue' and not self._remove:
                             self._answered = True
@@ -403,8 +413,8 @@ class BaselineAgent(ArtificialBrain):
                             # Add area to the to do list
                             self._tosearch.append(self._door['room_name'])
                             self._phase = Phase.FIND_NEXT_GOAL
-                        # Remove the obstacle if the human tells the agent to do so
-                        if self.received_messages_content and self.received_messages_content[-1] == 'Remove' or self._remove:
+                        # Remove the obstacle if the human tells the agent to do so, or by itself if ignoring the human
+                        if self.received_messages_content and self.received_messages_content[-1] == 'Remove' or self._remove or self._unwilling:
                             if not self._remove:
                                 self._answered = True
                                 self._waiting = False
@@ -422,10 +432,12 @@ class BaselineAgent(ArtificialBrain):
                         objects.append(info)
                         # Communicate which obstacle is blocking the entrance
                         if self._answered == False and not self._remove and not self._waiting:
-                            self._sendMessage('Found stones blocking  ' + str(self._door['room_name']) + '. Please decide whether to "Remove together", "Remove alone", or "Continue" searching. \n \n \
-                                Important features to consider are: \n safe - victims rescued: ' + str(self._collectedVictims) + ' \n explore - areas searched: area ' + str(self._searchedRooms).replace('area','') + ' \
-                                \n clock - removal time together: 3 seconds \n afstand - distance between us: ' + self._distanceHuman + '\n clock - removal time alone: 20 seconds','RescueBot')
-                            self._waiting = True
+                            if not self._unwilling: # Ask the human for help if not unwilling
+                                self._sendMessage('Found stones blocking  ' + str(self._door['room_name']) + '. Please decide whether to "Remove together", "Remove alone", or "Continue" searching. \n \n \
+                                    Important features to consider are: \n safe - victims rescued: ' + str(self._collectedVictims) + ' \n explore - areas searched: area ' + str(self._searchedRooms).replace('area','') + ' \
+                                    \n clock - removal time together: 3 seconds \n afstand - distance between us: ' + self._distanceHuman + '\n clock - removal time alone: 20 seconds','RescueBot')
+                                self._waiting = True
+                            else: self._answered = True # Otherwise, remove without human's input
                         # Determine the next area to explore if the human tells the agent not to remove the obstacle          
                         if self.received_messages_content and self.received_messages_content[-1] == 'Continue' and not self._remove:
                             self._answered = True
@@ -433,8 +445,8 @@ class BaselineAgent(ArtificialBrain):
                             # Add area to the to do list
                             self._tosearch.append(self._door['room_name'])
                             self._phase = Phase.FIND_NEXT_GOAL
-                        # Remove the obstacle alone if the human decides so
-                        if self.received_messages_content and self.received_messages_content[-1] == 'Remove alone' and not self._remove:
+                        # Remove the obstacle alone if the human decides so, or if they're unwilling enough do it without their input
+                        if self.received_messages_content and self.received_messages_content[-1] == 'Remove alone' and not self._remove or self._unwilling:
                             self._answered = True
                             self._waiting = False
                             self._sendMessage('Removing stones blocking ' + str(self._door['room_name']) + '.','RescueBot')
