@@ -13,7 +13,6 @@ from matrx.actions.object_actions import GrabObject, DropObject, RemoveObject
 from matrx.actions.move_actions import MoveNorth
 from matrx.messages.message import Message
 from matrx.messages.message_manager import MessageManager
-import re
 from actions1.CustomActions import RemoveObjectTogether, CarryObjectTogether, DropObjectTogether, CarryObject, Drop
 
 class Phase(enum.Enum):
@@ -50,7 +49,7 @@ class BaselineAgent(ArtificialBrain):
         self._folder = folder
         self._phase = Phase.INTRO
         self._roomVics = []
-        self._searchedRooms = {}
+        self._searchedRooms = {} # Turned into a dictionary
         self._foundVictims = []
         self._collectedVictims = []
         self._foundVictimLocs = {}
@@ -86,7 +85,7 @@ class BaselineAgent(ArtificialBrain):
         self.list_of_competance = [(0, 0)] #Init Competance value, init tick.
         self.list_of_confidence = [(0, 0)] #Init confidence value, init tick.
         self.ticks = 0 # To get the ticks.
-        self._flag = False
+        self._re_search_rooms = False # If all rooms have been searched, but not all victims saved.
         self._unwilling = False
 
     def initialize(self):
@@ -98,7 +97,9 @@ class BaselineAgent(ArtificialBrain):
         # Filtering of the world state before deciding on an action 
         return state
 
-    # Calculates cost for re-searching a room based on distance and willingness
+    # Calculates cost of moving to a room based on distance and willingness.
+    # Takes the agent's state, the room to re-search, and the human's willingness.
+    # A higher willingness yields a lower cost and vice versa.
     def _distance_cost(self, state, destination, willingness):
         loc = state[self.agent_id]['location']
         destLoc = state.get_room_doors(destination)[0]['location']
@@ -210,7 +211,7 @@ class BaselineAgent(ArtificialBrain):
                 # Check which victims can be rescued next because human or agent already found them             
                 for vic in remainingVics:
                     # Define a previously found victim as target victim because all areas have been searched
-                    if vic in self._foundVictims and vic in self._todo and self._flag == True: # changed len(self._searchedRooms)==0 to flag
+                    if vic in self._foundVictims and vic in self._todo and self._re_search_rooms == True:
                         self._goalVic = vic
                         self._goalLoc = remaining[vic]
                         # Move to target victim
@@ -263,24 +264,17 @@ class BaselineAgent(ArtificialBrain):
                              and room['room_name'] in self._searchedRooms
                              and room['room_name'] not in self._tosearch
                              and self._searchedRooms[room['room_name']] != 1]
-                    self._flag = True # Set the flag to true, marking the robot in a re-search phase
-                    #self._tosearch = []
-                    #self._sendMessages = []
-                    #self.received_messages = []
-                    #self.received_messages_content = []
+                    self._re_search_rooms = True # Set the flag to true, all rooms have been searched, but not all victims saved.
                     self._phase = Phase.FIND_NEXT_GOAL
                     if len(rooms) > 0:
-                        # Prioritize rooms with claimed victims in them. Check the rooms with the
-                        # Filter into list of prioritized rooms to check
                         victimLocations = [(v['room'], v['likelihood']) for v in self._foundVictimLocs.values() if v['likelihood'] != 1]
-                        # Prioritize the claimed victim location rooms first, else continue without prioritized rooms
+                        # Prioritize the claimed victim location rooms first, else continue without victim prioritized rooms
+                        # Consider the human searched rooms based on descending cost function
                         if len(victimLocations) > 0:
                             sortedLocations = sorted(victimLocations, key=lambda x: self._distance_cost(state, x[0], x[1]), reverse=True)
                             self._searchedRooms.pop(sortedLocations[0][0])
                         else:
                             rooms = sorted(rooms, key=lambda x: self._distance_cost(state, x[0], x[1]), reverse=True)
-                            # Start considering the human searched rooms based on descending cost function
-                            # NEXT GOAL is the room with the largest cost function.
                             self._searchedRooms.pop(rooms[0][0])
                     else:
                         self._searchedRooms = {}
@@ -406,7 +400,7 @@ class BaselineAgent(ArtificialBrain):
                                     Important features to consider are: \n safe - victims rescued: ' + str(self._collectedVictims) + '\n explore - areas searched: area ' + str(self._searchedRooms).replace('area ','') + ' \
                                     \n clock - removal time: 10 seconds','RescueBot')
                                 self._waiting = True
-                            else: self._answered = True # Otherwise, refrain from asking the human for input TODO: needed?
+                            else: self._answered = True # Otherwise, refrain from asking the human for input
                         # Determine the next area to explore if the human tells the agent not to remove the obstacle
                         if self.received_messages_content and self.received_messages_content[-1] == 'Continue' and not self._remove:
                             self._answered = True
@@ -806,7 +800,6 @@ class BaselineAgent(ArtificialBrain):
                 if msg.startswith("Search:"):
                     area = 'area ' + msg.split()[-1]
                     if area not in self._searchedRooms:
-                        # Trust scenario 1: Human claims to go search a room
                         self._searchedRooms[area] = willingness
                 # If a received message involves team members finding victims, add these victims and their locations to memory
                 if msg.startswith("Found:"):
@@ -859,7 +852,6 @@ class BaselineAgent(ArtificialBrain):
                 if msg.startswith('Remove:'):
                     # Come over immediately when the agent is not carrying a victim
                     area = 'area ' + msg.split()[-1]
-                    # Calculate the cost with inverted willingness, because we want the cost to be high if the human is lying in this scenario
                     cost = self._distance_cost(state, area, willingness)
                     threshold = max(5 * (-competence + 1) / 2, 1)
                     if (cost < threshold) ^ (random.random() > confidence):
@@ -970,8 +962,6 @@ class BaselineAgent(ArtificialBrain):
 
             #if victim found
             if ("Found" and "injured" and "in area ") in sent_message:
-                #trustBeliefs = self.human_helps_robot_victims(trustBeliefs, self._sendMessages.index(sent_message))
-                #trustBeliefs = self.robot_finds_victim_in_searched_area(trustBeliefs, sent_message)
                 # increasing the willingness when the robot finds a victim thanks to what the human said
                 if 'because you told me' and ' was located here.' in sent_message:
                     print("W increased by 0.1 (+ streak) because the human gave the correct location of a highly injured victim")
