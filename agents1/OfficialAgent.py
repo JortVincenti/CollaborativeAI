@@ -542,15 +542,14 @@ class BaselineAgent(ArtificialBrain):
                                            afstand - distance between us: ' + self._distanceHuman, 'RescueBot')
                                     self._waiting = True
 
+                            #Checking whether the robot came across a victim not in the room said by the human.
                             if vic in self._foundVictims and not (self._foundVictimLocs[vic]['room'] == (self._door['room_name'])):
-                                print('said by human', self._foundVictimLocs[vic]['room'])
-                                print('actual location', self._door['room_name'])
                                 self._recentVic = vic
                                 self._foundVictimLocs[vic] = {'location': info['location'],
                                                               'room': self._door['room_name'],
                                                               'obj_id': info['obj_id'],
                                                               'likelihood': 1}
-
+                                #This variables keeps track about the amount of time the human lied.
                                 self._liesAboutVictimsPosition += 1
 
                                 # Communicate which victim the agent found and ask the human whether to rescue the victim now or at a later stage
@@ -918,20 +917,15 @@ class BaselineAgent(ArtificialBrain):
         Baseline implementation of a trust belief. Creates a dictionary with trust belief scores for each team member, for example based on the received messages.
         '''
 
-        # Update the trust value based on for example the received messages
-        print("Human", receivedMessages)
-        print("------")
-
-
         # In case the human tells  the position of a victim but the robot finds the victim in another room.
-        # we keep a global variable that counts how many times this happens (it gets increased in the decideOnActions(9
+        # we keep a global variable that counts how many times this happens (it gets increased in the decideOnActions())
         # method, and decrease the willingness as many times as it happened.
         for i in range(self._liesAboutVictimsPosition):
             trustBeliefs[self._humanName]['willingness'] -= 0.1
             trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
 
         # In case the human lies about the collecting a victim and the robot finds out
-        # we keep a global variable that counts how many times this happens (it gets increased in the decideOnActions(9
+        # we keep a global variable that counts how many times this happens (it gets increased in the decideOnActions())
         # method, and decrease the willingness and competenced as many times as it happened.
         for i in range(self._liesAboutVictimsCollection):
             trustBeliefs[self._humanName]['willingness'] -= 0.1
@@ -968,7 +962,6 @@ class BaselineAgent(ArtificialBrain):
                     trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
 
             # In case the human lies about the position of a hardly injured victim, so the robot goes there but doesn't find it.
-
             if "not present in" and "because I searched the whole area without finding" in sent_message:
                 trustBeliefs[self._humanName]['willingness'] -= 0.1
                 trustBeliefs[self._humanName]['confidence'] += self._confidence_increment
@@ -1037,8 +1030,6 @@ class BaselineAgent(ArtificialBrain):
 
 
         self.ticks += 1 #For every action increasr the tick.
-        print("C:", trustBeliefs[self._humanName]['competence'])
-        print("w:", trustBeliefs[self._humanName]['willingness'])
         return trustBeliefs
 
 
