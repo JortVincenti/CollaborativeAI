@@ -14,6 +14,7 @@ class ActionLogger(GridWorldLogger):
         # We will log score and completeness of the task
         log_data['score'] = grid_world.simulation_goal.score(grid_world)
         log_data['completeness'] = grid_world.simulation_goal.progress(grid_world)
+
         # For both human and agent, log their action and location per tick
         for agent_id, agent_body in grid_world.registered_agents.items():
             log_data[agent_id + '_action'] = agent_body.current_action
