@@ -365,7 +365,7 @@ class BaselineAgent(ArtificialBrain):
                         # Communicate which obstacle is blocking the entrance
                         if self._answered == False and not self._remove and not self._waiting:
                             self._sendMessage('Found rock blocking ' + str(self._door['room_name']) + '. Please decide whether to "Remove" or "Continue" searching. \n \n \
-                                Important features to consider are: \n safe - victims rescued: ' + str(self._collectedVictims) + ' \n explore - areas searched: area ' + str(self._searchedRooms).replace('area ','') + ' \
+                                Important features to consider are: \n safe - victims rescued: ' + str(self._collectedVictims) + ' \n explore - areas searched: area ' + str(list(self._searchedRooms.keys())).replace('area ','') + ' \
                                 \n clock - removal time: 5 seconds \n afstand - distance between us: ' + self._distanceHuman ,'RescueBot')
                             self._waiting = True
                         # Determine the next area to explore if the human tells the agent not to remove the obstacle
@@ -397,7 +397,7 @@ class BaselineAgent(ArtificialBrain):
                         if self._answered == False and not self._remove and not self._waiting:
                             if not self._unwilling: # Ask the human for their input if not unwilling
                                 self._sendMessage('Found tree blocking  ' + str(self._door['room_name']) + '. Please decide whether to "Remove" or "Continue" searching. \n \n \
-                                    Important features to consider are: \n safe - victims rescued: ' + str(self._collectedVictims) + '\n explore - areas searched: area ' + str(self._searchedRooms).replace('area ','') + ' \
+                                    Important features to consider are: \n safe - victims rescued: ' + str(self._collectedVictims) + '\n explore - areas searched: area ' + str(list(self._searchedRooms.keys())).replace('area ','') + ' \
                                     \n clock - removal time: 10 seconds','RescueBot')
                                 self._waiting = True
                             else: self._answered = True # Otherwise, refrain from asking the human for input
@@ -429,7 +429,7 @@ class BaselineAgent(ArtificialBrain):
                         if self._answered == False and not self._remove and not self._waiting:
                             if not self._unwilling: # Ask the human for help if not unwilling
                                 self._sendMessage('Found stones blocking  ' + str(self._door['room_name']) + '. Please decide whether to "Remove together", "Remove alone", or "Continue" searching. \n \n \
-                                    Important features to consider are: \n safe - victims rescued: ' + str(self._collectedVictims) + ' \n explore - areas searched: area ' + str(self._searchedRooms).replace('area','') + ' \
+                                    Important features to consider are: \n safe - victims rescued: ' + str(self._collectedVictims) + ' \n explore - areas searched: area ' + str(list(self._searchedRooms.keys())).replace('area','') + ' \
                                     \n clock - removal time together: 3 seconds \n afstand - distance between us: ' + self._distanceHuman + '\n clock - removal time alone: 20 seconds','RescueBot')
                                 self._waiting = True
                             else: self._answered = True # Otherwise, remove without human's input
@@ -596,13 +596,13 @@ class BaselineAgent(ArtificialBrain):
                                     # Communicate which victim the agent found and ask the human whether to rescue the victim now or at a later stage
                                     if 'mild' in vic and self._answered == False and not self._waiting:
                                         self._sendMessage('Found ' + vic + ' in ' + self._door['room_name'] + '. Please decide whether to "Rescue together", "Rescue alone", or "Continue" searching. \n \n \
-                                            Important features to consider are: \n safe - victims rescued: ' + str(self._collectedVictims) + '\n explore - areas searched: area ' + str(self._searchedRooms).replace('area ','') + '\n \
+                                            Important features to consider are: \n safe - victims rescued: ' + str(self._collectedVictims) + '\n explore - areas searched: area ' + str(list(self._searchedRooms.keys())).replace('area ','') + '\n \
                                             clock - extra time when rescuing alone: 15 seconds \n afstand - distance between us: ' + self._distanceHuman,'RescueBot')
                                         self._waiting = True
 
                                     if 'critical' in vic and self._answered == False and not self._waiting:
                                         self._sendMessage('Found ' + vic + ' in ' + self._door['room_name'] + '. Please decide whether to "Rescue" or "Continue" searching. \n\n \
-                                            Important features to consider are: \n explore - areas searched: area ' + str(self._searchedRooms).replace('area','') + ' \n safe - victims rescued: ' + str(self._collectedVictims) + '\n \
+                                            Important features to consider are: \n explore - areas searched: area ' + str(list(self._searchedRooms.keys())).replace('area','') + ' \n safe - victims rescued: ' + str(self._collectedVictims) + '\n \
                                             afstand - distance between us: ' + self._distanceHuman,'RescueBot')
                                         self._waiting = True
                     # Execute move actions to explore the area
